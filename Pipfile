@@ -4,9 +4,19 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+pandas = "*"
+pyshp = "*"
+matplotlib = "*"
+seaborn = "*"
+geopandas = "*"
+sqlalchemy = "*"
+psycopg2 = "*"
+geoalchemy2 = "*"
 
 [dev-packages]
+pycodestyle = "*"
+autopep8 = "*"
 
 [requires]
 python_version = "3.11"
-python_full_version = "3.11.3"
+python_full_version = "3.11.4"
