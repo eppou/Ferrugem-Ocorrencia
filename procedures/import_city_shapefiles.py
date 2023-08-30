@@ -4,7 +4,7 @@ import geopandas as gpd
 import seaborn as sns
 from sqlalchemy import create_engine
 
-from constants import INPUT_PATH, DB_STRING
+from constants import DB_STRING, INPUT_PATH
 
 
 def import_postgres():
@@ -23,6 +23,6 @@ def import_postgres():
     pprint(geodf.crs)
 
     db_con_engine = create_engine(DB_STRING)
-    geodf.to_postgis("city_shapefiles", db_con_engine, if_exists="append")
+    geodf.to_postgis("city_shapefiles", db_con_engine, if_exists="replace")
 
     pprint(geodf.sample(5))

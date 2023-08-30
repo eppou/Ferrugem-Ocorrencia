@@ -12,10 +12,7 @@ geopandas = "*"
 sqlalchemy = "*"
 psycopg2 = "*"
 geoalchemy2 = "*"
-
-[dev-packages]
-pycodestyle = "*"
-autopep8 = "*"
+numpy = "*"
 
 [requires]
 python_version = "3.11"
