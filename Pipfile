@@ -13,6 +13,7 @@ sqlalchemy = "*"
 psycopg2 = "*"
 geoalchemy2 = "*"
 numpy = "*"
+requests = "*"
 
 [requires]
 python_version = "3.11"

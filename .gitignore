@@ -2,5 +2,7 @@
 input/*
 !input/.gitkeep
 
+output/fileCPTEC
+
 __pycache__
 
