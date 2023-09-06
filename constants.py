@@ -2,4 +2,12 @@ from pathlib import Path
 
 INPUT_PATH = Path(__file__).parent / "input/"
 OUTPUT_PATH = Path(__file__).parent / "output/"
-DB_STRING = "postgresql://crke:135406@kentucky:5432/mestrado_pesquisa"
+
+DB_STRING = "postgresql://crke:135406@localhost:5432/mestrado_pesquisa"
+
+PARANA_MIN_LONGITUDE = -55.00
+PARANA_MIN_LATITUDE = -26.75
+PARANA_MAX_LONGITUDE = -48.00
+PARANA_MAX_LATITUDE = -22.44
+
+MAX_ATTEMPTS_RANDOM_COORDINATE = 500000

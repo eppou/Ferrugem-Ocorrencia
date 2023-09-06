@@ -28,7 +28,8 @@ FROM (
            AND o.doenca_id = 1
            AND uf.nome = 'PARANÁ'
            -- AND EXTRACT(YEAR FROM o.dia) BETWEEN 2020 AND 2021
-           AND EXTRACT(YEAR FROM o.dia) = 2022
+           -- AND EXTRACT(YEAR FROM o.dia) = ':ano'
+           AND s.safra = ':safra'
            AND o.tipodearea_id = 1
          ORDER BY o.dia DESC
      ) as occurrence_location_data
