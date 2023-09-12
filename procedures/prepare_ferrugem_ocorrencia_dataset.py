@@ -1,56 +1,116 @@
 import pandas as pd
-from datetime import date, datetime
-from sqlalchemy import create_engine, Connection, text
+from datetime import date
+from sqlalchemy import create_engine, Connection
+from calculation.precipitation import calculate_precipitation_acc, calculate_precipitation_count
+from calculation.coordinates import find_nearest_segment_id, determine_random_coordinates
+from calculation.dates import determine_random_date
 
 from constants import DB_STRING, OUTPUT_PATH
-from procedures.constants import QUERY_OCORRENCIAS, QUERY_PRECIPITATION_SEGMENTS, QUERY_PRECIPITATION_ACC
-from calculation import coordinates, dates
+from procedures.constants import (
+    QUERY_OCORRENCIAS,
+    MIN_DISTANCE_FOR_NON_OCCURRENCES
+)
+from source.occurrence import get_safras
 
 """
 Main pipeline to create the dataset with Soybean rust occurrences.
 """
-
-SAFRAS = ["2017/2018", "2018/2019", "2019/2020"]
 
 
 # 1. Coletar todas as ocorrências por safra. Calcular features por data de ocorrência.
 # 2. Contar ocorrências e gerar não-ocorrencias por safra. Método: Sorteio. Definir distancia = 2 graus em duas direções
 # 3. Para cada não-ocorrência, usar dados da safra para gerar features. Chutar um intervalo entre o começo e fim da
 # safra como "data de verificado como não ocorrência". Calcular features.
+
+# DONE: Criar view para query de ocorrências
+# DONE: Determinar datas das safras
+# DONE: Calcular precipitação para 15, 30, 45, etc para toda a safra
+# DONE: Adicionar contagem de dias de chuva para 15, 30, 45, etc para toda a safra
+# DONE: Melhorar algoritmo do chute com distância reduzida
+# TODO: Melhorar algoritmo do chute com mapas da plantação de soja no Paraná
+# TODO: Fazer recorte do mapa do Paraná
 def run():
     db_con_engine = create_engine(DB_STRING)
     conn = db_con_engine.connect()
 
     ocorrencias_df_full_all = pd.DataFrame()
 
-    for safra in SAFRAS:
-        # Fetching all occurrences from consorcio_antiferrugem database
-        ocorrencias_df_full = pd.read_sql_query(QUERY_OCORRENCIAS.replace(":safra", safra), con=db_con_engine)
+    safras = get_safras(conn)
+
+    for safra in safras:
+        # Fetching occurrences from consorcio_antiferrugem database, per harverst
+        ocorrencias_df_full = pd.read_sql_query(QUERY_OCORRENCIAS.replace(":safra", safra["safra"]), con=db_con_engine)
 
         # Randomly generating non-occurrences
-        nao_ocorrencias_df_full = create_random_non_occurrences(1.5, len(ocorrencias_df_full.index))
-        ocorrencias_df_full = pd.concat([ocorrencias_df_full, nao_ocorrencias_df_full])
+        used_coordinates = [
+            (x[0], x[1]) for x in ocorrencias_df_full[["ocorrencia_latitude", "ocorrencia_longitude"]].values.tolist()]
+        nao_ocorrencias_df_full = create_random_non_occurrences(
+            MIN_DISTANCE_FOR_NON_OCCURRENCES,
+            len(ocorrencias_df_full.index),
+            safra["safra"],
+            used_coordinates,
+        )
+        ocorrencias_df_full = pd.concat([ocorrencias_df_full, nao_ocorrencias_df_full]).reset_index()
+
+        print(f"Size of occurrences dataset: {ocorrencias_df_full.shape[0]}")
 
         # Assigning a segment_id - a match for a position for the nearest precipitation data
+        # count = 0
         for index, ocorrencia in ocorrencias_df_full.iterrows():
             latitude = ocorrencia["ocorrencia_latitude"]
             longitude = ocorrencia["ocorrencia_longitude"]
+            print(f"Finding nearest segment for {latitude} {longitude}, index {index}")
 
-            ocorrencias_df_full.at[index, "segment_id"] = find_nearest_segment_id(conn, latitude, longitude)
+            segment_id = find_nearest_segment_id(conn, latitude, longitude)
+            ocorrencias_df_full.at[index, "segment_id"] = segment_id
+            print(f"Segment found: {segment_id}, index {index}")
+            # count += 1
+            # if count == 5:
+            #     break
 
         # Calculating and storing accumulated precipitation
-        segment_id_data_list = ocorrencias_df_full[["segment_id", "data"]]
-        precipitation_7d_list, precipitation_14d_list, precipitation_30d_list = [], [], []
-        for seg_data in segment_id_data_list.values.tolist():
-            segment_id, data = seg_data
-            p7d, p14d, p30d = calculate_precipitation_acc(conn, segment_id, data)
-            precipitation_7d_list.append(p7d)
-            precipitation_14d_list.append(p14d)
-            precipitation_30d_list.append(p30d)
+        # Calculating number of days of precipitation
+        # Calculating DSV severity indicator
+        segment_id_list = ocorrencias_df_full[["segment_id"]]
+        p14d_list, p30d_list, p60d_list, p90d_list = [], [], [], []
+        pc14d_list, pc30d_list, pc60d_list, pc90d_list = [], [], [], []
 
-        ocorrencias_df_full["precipitation_7d"] = precipitation_7d_list
-        ocorrencias_df_full["precipitation_14d"] = precipitation_14d_list
-        ocorrencias_df_full["precipitation_30d"] = precipitation_30d_list
+        for seg_data in segment_id_list.values.tolist():
+            segment_id = int(seg_data[0])
+
+            p14, p30, p60, p90 = calculate_precipitation_acc(
+                conn,
+                segment_id,
+                safra["planting_start_date"],
+                safra["planting_end_date"],
+            )
+            pc14, pc30, pc60, pc90 = calculate_precipitation_count(
+                conn,
+                segment_id,
+                safra["planting_start_date"],
+                safra["planting_end_date"],
+            )
+            # dsv_30d = calculate_dsv_30d(conn, segment_id, data)
+
+            p14d_list.append(p14)
+            p30d_list.append(p30)
+            p60d_list.append(p60)
+            p90d_list.append(p90)
+
+            pc14d_list.append(pc14)
+            pc30d_list.append(pc30)
+            pc60d_list.append(pc60)
+            pc90d_list.append(pc90)
+
+        ocorrencias_df_full["precipitation_14d"] = p14d_list
+        ocorrencias_df_full["precipitation_30d"] = p30d_list
+        ocorrencias_df_full["precipitation_60d"] = p60d_list
+        ocorrencias_df_full["precipitation_90d"] = p90d_list
+
+        ocorrencias_df_full["precipitation_14d_count"] = pc14d_list
+        ocorrencias_df_full["precipitation_30d_count"] = pc30d_list
+        ocorrencias_df_full["precipitation_60d_count"] = pc60d_list
+        ocorrencias_df_full["precipitation_90d_count"] = pc90d_list
 
         ocorrencias_df_full_all = pd.concat([ocorrencias_df_full_all, ocorrencias_df_full])
 
@@ -65,24 +125,28 @@ def run():
     db_con_engine.dispose()
 
 
-def create_random_non_occurrences(distance: float, count: int):
+def create_random_non_occurrences(
+        min_distance: float,
+        count: int,
+        safra: str,
+        used_coordinates: list[tuple[float, float]]
+):
     # Calcular ocorrências aleatórias. Quantidade especificada no parâmetro. Distância especificada no parâmetro.
     # Chutar um dia dentro da safra para "data de não ocorrencia"
 
     # NOTA: É importante calcular coordenadas aleatórias por safra e não global, pois estamos analizando os eventos
     # de cada safra separadamente. Portanto, used_coordinates é resetado para cada invocação desta função.
 
-    # TODO: Qual é a data da safra?
+    data: list[dict] = []
 
-    used_coordinates = []
-    data = []
     for x in range(count):
-        coordinate = coordinates.determine_random_coordinates(used_coordinates, distance)
+        coordinate = determine_random_coordinates(used_coordinates, min_distance)
         used_coordinates.append(coordinate)
 
         data.append({
             'ocorrencia_id': '',
-            'data': dates.determine_random_date(date(2023, 5, 23), date(2023, 8, 11)),
+            'data': '',
+            'safra': safra,
             'cidade_nome': '',
             'estado_nome': '',
             'ocorrencia_localizacao': '',
@@ -90,22 +154,10 @@ def create_random_non_occurrences(distance: float, count: int):
             'ocorrencia_longitude': coordinate[1],
             'ocorrencia': False,
         })
+        print("Coordinate found!")
 
     return pd.DataFrame(data)
 
 
-def find_nearest_segment_id(conn: Connection, lat, long) -> int:
-    result = conn.execute(
-        text(QUERY_PRECIPITATION_SEGMENTS.replace(":latitude", str(lat)).replace(":longitude", str(long)))
-    ).fetchone()
-
-    return int(result.t[0])
-
-
-def calculate_precipitation_acc(conn: Connection, segment_id, target_date: date) -> tuple:
-    target_date_str = target_date.strftime("%Y-%m-%d")
-    result = conn.execute(
-        text(QUERY_PRECIPITATION_ACC.replace(":segment_id", str(segment_id)).replace(":target_date", target_date_str))
-    ).fetchone()
-
-    return result.t
+def calculate_dsv_30d(conn: Connection, segment_id, target_date: date) -> float:
+    pass
