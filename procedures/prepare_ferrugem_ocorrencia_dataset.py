@@ -2,7 +2,7 @@ import pandas as pd
 from datetime import date
 from sqlalchemy import create_engine, Connection
 from calculation.precipitation import calculate_precipitation_acc, calculate_precipitation_count
-from calculation.coordinates import find_nearest_segment_id, determine_random_coordinates
+from calculation.coordinates import find_nearest_segment_id, determine_random_coordinate
 from calculation.dates import determine_random_date
 
 from constants import DB_STRING, OUTPUT_PATH
@@ -27,8 +27,8 @@ Main pipeline to create the dataset with Soybean rust occurrences.
 # DONE: Calcular precipitação para 15, 30, 45, etc para toda a safra
 # DONE: Adicionar contagem de dias de chuva para 15, 30, 45, etc para toda a safra
 # DONE: Melhorar algoritmo do chute com distância reduzida
-# TODO: Melhorar algoritmo do chute com mapas da plantação de soja no Paraná
-# TODO: Fazer recorte do mapa do Paraná
+# DONE: Fazer recorte do mapa do Paraná (primeiro filtro)
+# DONE: Melhorar algoritmo do chute com mapas da plantação de soja no Paraná (segundo filtro)
 def run():
     db_con_engine = create_engine(DB_STRING)
     conn = db_con_engine.connect()
@@ -43,7 +43,7 @@ def run():
 
         # Randomly generating non-occurrences
         used_coordinates = [
-            (x[0], x[1]) for x in ocorrencias_df_full[["ocorrencia_latitude", "ocorrencia_longitude"]].values.tolist()]
+            (x[0], x[1]) for x in ocorrencias_df_full[["ocorrencia_longitude", "ocorrencia_latitude"]].values.tolist()]
         nao_ocorrencias_df_full = create_random_non_occurrences(
             MIN_DISTANCE_FOR_NON_OCCURRENCES,
             len(ocorrencias_df_full.index),
@@ -59,7 +59,7 @@ def run():
         for index, ocorrencia in ocorrencias_df_full.iterrows():
             latitude = ocorrencia["ocorrencia_latitude"]
             longitude = ocorrencia["ocorrencia_longitude"]
-            print(f"Finding nearest segment for {latitude} {longitude}, index {index}")
+            print(f"Finding nearest segment for (lat/long) {latitude} {longitude}, index {index}")
 
             segment_id = find_nearest_segment_id(conn, latitude, longitude)
             ocorrencias_df_full.at[index, "segment_id"] = segment_id
@@ -129,7 +129,7 @@ def create_random_non_occurrences(
         min_distance: float,
         count: int,
         safra: str,
-        used_coordinates: list[tuple[float, float]]
+        used_coordinates: list[tuple[float, float]]  # x, y => long, lat
 ):
     # Calcular ocorrências aleatórias. Quantidade especificada no parâmetro. Distância especificada no parâmetro.
     # Chutar um dia dentro da safra para "data de não ocorrencia"
@@ -140,7 +140,7 @@ def create_random_non_occurrences(
     data: list[dict] = []
 
     for x in range(count):
-        coordinate = determine_random_coordinates(used_coordinates, min_distance)
+        coordinate = determine_random_coordinate(used_coordinates, min_distance)
         used_coordinates.append(coordinate)
 
         data.append({
@@ -150,8 +150,8 @@ def create_random_non_occurrences(
             'cidade_nome': '',
             'estado_nome': '',
             'ocorrencia_localizacao': '',
-            'ocorrencia_latitude': coordinate[0],
-            'ocorrencia_longitude': coordinate[1],
+            'ocorrencia_latitude': coordinate[1],   # y => Latitude
+            'ocorrencia_longitude': coordinate[0],  # x => Longitude
             'ocorrencia': False,
         })
         print("Coordinate found!")
