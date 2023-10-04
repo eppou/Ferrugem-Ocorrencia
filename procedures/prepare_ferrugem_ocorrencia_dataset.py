@@ -3,7 +3,6 @@ from datetime import date
 from sqlalchemy import create_engine, Connection
 from calculation.precipitation import calculate_precipitation_acc, calculate_precipitation_count
 from calculation.coordinates import find_nearest_segment_id, determine_random_coordinate
-from calculation.dates import determine_random_date
 
 from constants import DB_STRING, OUTPUT_PATH
 from procedures.constants import (
@@ -29,6 +28,10 @@ Main pipeline to create the dataset with Soybean rust occurrences.
 # DONE: Melhorar algoritmo do chute com distância reduzida
 # DONE: Fazer recorte do mapa do Paraná (primeiro filtro)
 # DONE: Melhorar algoritmo do chute com mapas da plantação de soja no Paraná (segundo filtro)
+# TODO: Ajustar para intervalos de 15 dias
+# TODO: Verificar datas mais precisas das safras?
+# TODO: Separar geração das instâncias do cálculo dos features
+# TODO: Adicionar índice na busca do vizinho mais próximo no banco
 def run():
     db_con_engine = create_engine(DB_STRING)
     conn = db_con_engine.connect()
@@ -38,6 +41,8 @@ def run():
     safras = get_safras(conn)
 
     for safra in safras:
+        print(f"=> Processsing safra {safra['safra']}...")
+
         # Fetching occurrences from consorcio_antiferrugem database, per harverst
         ocorrencias_df_full = pd.read_sql_query(QUERY_OCORRENCIAS.replace(":safra", safra["safra"]), con=db_con_engine)
 
@@ -55,7 +60,6 @@ def run():
         print(f"Size of occurrences dataset: {ocorrencias_df_full.shape[0]}")
 
         # Assigning a segment_id - a match for a position for the nearest precipitation data
-        # count = 0
         for index, ocorrencia in ocorrencias_df_full.iterrows():
             latitude = ocorrencia["ocorrencia_latitude"]
             longitude = ocorrencia["ocorrencia_longitude"]
@@ -64,27 +68,24 @@ def run():
             segment_id = find_nearest_segment_id(conn, latitude, longitude)
             ocorrencias_df_full.at[index, "segment_id"] = segment_id
             print(f"Segment found: {segment_id}, index {index}")
-            # count += 1
-            # if count == 5:
-            #     break
 
         # Calculating and storing accumulated precipitation
         # Calculating number of days of precipitation
         # Calculating DSV severity indicator
         segment_id_list = ocorrencias_df_full[["segment_id"]]
-        p14d_list, p30d_list, p60d_list, p90d_list = [], [], [], []
-        pc14d_list, pc30d_list, pc60d_list, pc90d_list = [], [], [], []
+        p15d_list, p30d_list, p45d_list, p60d_list, p75d_list, p90d_list = [], [], [], [], [], []
+        pc15d_list, pc30d_list, pc45d_list, pc60d_list, pc75d_list, pc90d_list = [], [], [], [], [], []
 
         for seg_data in segment_id_list.values.tolist():
             segment_id = int(seg_data[0])
 
-            p14, p30, p60, p90 = calculate_precipitation_acc(
+            p15, p30, p45, p60, p75, p90 = calculate_precipitation_acc(
                 conn,
                 segment_id,
                 safra["planting_start_date"],
                 safra["planting_end_date"],
             )
-            pc14, pc30, pc60, pc90 = calculate_precipitation_count(
+            pc15, pc30, pc45, pc60, pc75, pc90 = calculate_precipitation_count(
                 conn,
                 segment_id,
                 safra["planting_start_date"],
@@ -92,24 +93,32 @@ def run():
             )
             # dsv_30d = calculate_dsv_30d(conn, segment_id, data)
 
-            p14d_list.append(p14)
+            p15d_list.append(p15)
             p30d_list.append(p30)
+            p45d_list.append(p45)
             p60d_list.append(p60)
+            p75d_list.append(p75)
             p90d_list.append(p90)
 
-            pc14d_list.append(pc14)
+            pc15d_list.append(pc15)
             pc30d_list.append(pc30)
+            pc45d_list.append(pc45)
             pc60d_list.append(pc60)
+            pc75d_list.append(pc75)
             pc90d_list.append(pc90)
 
-        ocorrencias_df_full["precipitation_14d"] = p14d_list
+        ocorrencias_df_full["precipitation_15d"] = p15d_list
         ocorrencias_df_full["precipitation_30d"] = p30d_list
+        ocorrencias_df_full["precipitation_45d"] = p45d_list
         ocorrencias_df_full["precipitation_60d"] = p60d_list
+        ocorrencias_df_full["precipitation_75d"] = p75d_list
         ocorrencias_df_full["precipitation_90d"] = p90d_list
 
-        ocorrencias_df_full["precipitation_14d_count"] = pc14d_list
+        ocorrencias_df_full["precipitation_15d_count"] = pc15d_list
         ocorrencias_df_full["precipitation_30d_count"] = pc30d_list
+        ocorrencias_df_full["precipitation_45d_count"] = pc45d_list
         ocorrencias_df_full["precipitation_60d_count"] = pc60d_list
+        ocorrencias_df_full["precipitation_75d_count"] = pc75d_list
         ocorrencias_df_full["precipitation_90d_count"] = pc90d_list
 
         ocorrencias_df_full_all = pd.concat([ocorrencias_df_full_all, ocorrencias_df_full])
@@ -117,8 +126,15 @@ def run():
     # Output full dataset (possible contain extra information for debugging and visualization)
     ocorrencias_df_full_all.to_csv(OUTPUT_PATH / "ferrugem_ocorrencia_dataset_full.csv", index=False)
 
-    ocorrencias_df = ocorrencias_df_full_all[
-        ["data", "ocorrencia_latitude", "ocorrencia_longitude", "ocorrencia"]].copy()
+    ocorrencias_df = ocorrencias_df_full_all
+    [[
+        "safra", "ocorrencia_latitude", "ocorrencia_longitude",
+        "precipitation_15d", "precipitation_30d", "precipitation_45d",
+        "precipitation_60d", "precipitation_75d", "precipitation_90d",
+        "precipitation_15d_count", "precipitation_30d_count", "precipitation_45d_count",
+        "precipitation_60d_count", "precipitation_75d_count", "precipitation_90d_count",
+        "ocorrencia"
+    ]].copy()
     ocorrencias_df.to_csv(OUTPUT_PATH / "ferrugem_ocorrencia_dataset.csv", index=False)
 
     conn.close()
@@ -154,7 +170,7 @@ def create_random_non_occurrences(
             'ocorrencia_longitude': coordinate[0],  # x => Longitude
             'ocorrencia': False,
         })
-        print("Coordinate found!")
+        print(f"Coordinate found! Value: (long/lat) (x/y) {coordinate}")
 
     return pd.DataFrame(data)
 

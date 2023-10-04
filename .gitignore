@@ -1,10 +1,11 @@
-.idea
 input/*
 !input/.gitkeep
 !input/shapefiles_*
 !input/testlab
 
 output/fileCPTEC
+output/*.csv
+!output/*backup.csv
 
 __pycache__
 
