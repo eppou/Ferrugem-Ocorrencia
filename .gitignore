@@ -8,4 +8,4 @@ output/*.csv
 !output/*backup.csv
 
 __pycache__
-
+.idea
