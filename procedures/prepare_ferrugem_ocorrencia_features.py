@@ -30,58 +30,46 @@ Main pipeline to create the dataset with Soybean rust occurrences.
 # DONE: Melhorar algoritmo do chute com mapas da plantação de soja no Paraná (segundo filtro)
 # DONE: Ajustar para intervalos de 15 dias
 # TODO: Verificar datas mais precisas das safras?
-# TODO: Separar geração das instâncias do cálculo dos features
+# DONE: Separar geração das instâncias do cálculo dos features
 # DONE: Adicionar índice na busca do vizinho mais próximo no banco
 def run():
     db_con_engine = create_engine(DB_STRING)
     conn = db_con_engine.connect()
 
     instances_df = pd.read_csv(OUTPUT_PATH / "instances_dataset.csv")
-
-    print("=====> Assigning a segment_id (for precipitation data)")
-    # Assigning a segment_id - a match for a position for the nearest precipitation data
-    for index, ocorrencia in instances_df.iterrows():
-        latitude = ocorrencia["ocorrencia_latitude"]
-        longitude = ocorrencia["ocorrencia_longitude"]
-        print(f"Finding nearest segment for (lat/long) {latitude} {longitude}, index {index}")
-
-        segment_id = find_nearest_segment_id(conn, latitude, longitude)
-        print(f"Segment found: {segment_id}, index {index}")
-
-        instances_df.at[index, "segment_id"] = segment_id
-
     safras = get_safras(conn)
-
     ocorrencias_df = pd.DataFrame()
+
     for safra in safras:
         safra_nome = safra["safra"]
-        ocorrencias_df_safra = instances_df[instances_df["safra"] == safra_nome]
+        print(f"=====> Processing features for safra {safra_nome}")
+
+        ocorrencias_df_safra = instances_df[instances_df["safra"] == safra_nome].copy()
 
         # FEATURE CALCULATION
-
         # Calculating and storing accumulated precipitation
         # Calculating number of days of precipitation
         # Calculating DSV severity indicator
-        segment_id_list = ocorrencias_df_safra[["segment_id"]]
+        segment_id_list = ocorrencias_df_safra[["segment_id_precipitation"]]
         p15d_list, p30d_list, p45d_list, p60d_list, p75d_list, p90d_list = [], [], [], [], [], []
         pc15d_list, pc30d_list, pc45d_list, pc60d_list, pc75d_list, pc90d_list = [], [], [], [], [], []
 
         for seg_data in segment_id_list.values.tolist():
-            segment_id = int(seg_data[0])
+            segment_id_precipitation = int(seg_data[0])
 
             p15, p30, p45, p60, p75, p90 = calculate_precipitation_acc(
                 conn,
-                segment_id,
+                segment_id_precipitation,
                 safra["planting_start_date"],
                 safra["planting_end_date"],
             )
             pc15, pc30, pc45, pc60, pc75, pc90 = calculate_precipitation_count(
                 conn,
-                segment_id,
+                segment_id_precipitation,
                 safra["planting_start_date"],
                 safra["planting_end_date"],
             )
-            # dsv_30d = calculate_dsv_30d(conn, segment_id, data)
+            # dsv_30d = calculate_dsv_30d(conn, segment_id_precipitation, data)
 
             p15d_list.append(p15)
             p30d_list.append(p30)
@@ -114,7 +102,8 @@ def run():
         ocorrencias_df = pd.concat([ocorrencias_df, ocorrencias_df_safra])
 
     # Output full dataset (possible contain extra information for debugging and visualization)
-    ocorrencias_df.to_csv(OUTPUT_PATH / "instances_features_dataset_all.csv", index=False)
+    ocorrencias_df.reset_index(inplace=True)
+    ocorrencias_df.to_csv(OUTPUT_PATH / "instances_features_dataset_all.csv")
 
     ocorrencias_df = ocorrencias_df
     [[
@@ -125,7 +114,7 @@ def run():
         "precipitation_60d_count", "precipitation_75d_count", "precipitation_90d_count",
         "ocorrencia"
     ]].copy()
-    ocorrencias_df.to_csv(OUTPUT_PATH / "instances_features_dataset.csv", index=False)
+    ocorrencias_df.to_csv(OUTPUT_PATH / "instances_features_dataset.csv")
 
     conn.close()
     db_con_engine.dispose()

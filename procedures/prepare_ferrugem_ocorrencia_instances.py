@@ -47,9 +47,21 @@ def run():
         )
         instances_ocorrencia_df = pd.concat([instances_ocorrencia_df, instances_nao_ocorrencia_df]).reset_index()
 
-        print(f"=====> Size of instances dataset: {instances_ocorrencia_df.shape[0]}")
-
         instances_df_all = pd.concat([instances_df_all, instances_ocorrencia_df])
+
+    # Assigning a segment_id_precipitation - a match for a position for the nearest precipitation data
+    print("=====> Assigning a segment_id_precipitation (for precipitation data)")
+    for index, ocorrencia in instances_df_all.iterrows():
+        latitude = ocorrencia["ocorrencia_latitude"]
+        longitude = ocorrencia["ocorrencia_longitude"]
+        print(f"Finding nearest segment for (lat/long) {latitude} {longitude}, index {index}")
+
+        segment_id_precipitation = find_nearest_segment_id(conn, latitude, longitude)
+        print(f"Segment found: {segment_id_precipitation}, index {index}")
+
+        instances_df_all.at[index, "segment_id_precipitation"] = segment_id_precipitation
+
+    print(f"=====> Size of instances dataset: {instances_df_all.shape[0]}")
 
     # Output full dataset (possible contain extra information for debugging and visualization)
     instances_df_all.to_csv(OUTPUT_PATH / "instances_dataset_all.csv", index=False)
