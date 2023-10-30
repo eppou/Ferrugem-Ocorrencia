@@ -3,14 +3,17 @@ from datetime import datetime
 
 import procedures.prepare_ferrugem_ocorrencia_instances as prepare_instances
 import procedures.prepare_ferrugem_ocorrencia_features as prepare_features
+import procedures.train_model as tm
 
 if __name__ == "__main__":
     print(datetime.now().strftime("Execution started at %Y-%m-%d %I:%M:%S %p"))
+    print()
     start = time.time()
 
-    prepare_features.run()
+    tm.run()
 
     end = time.time()
 
+    print()
     print(datetime.now().strftime("Execution ended at %Y-%m-%d %I:%M:%S %p"))
     print(f"Execution took {round((end - start) * 10**3)} ms")
