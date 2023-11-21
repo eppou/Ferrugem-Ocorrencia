@@ -1,7 +1,9 @@
+import numpy as np
 import pandas as pd
-from datetime import date
+from datetime import date, datetime
 from sqlalchemy import create_engine, Connection
 from calculation.precipitation import calculate_precipitation_acc, calculate_precipitation_count
+from calculation.severity import calculate_dsv_30d, calculate_dsv_safra
 from calculation.coordinates import find_nearest_segment_id, determine_random_coordinate
 
 from constants import DB_STRING, OUTPUT_PATH
@@ -40,6 +42,8 @@ def run():
     safras = get_safras(conn)
     ocorrencias_df = pd.DataFrame()
 
+    count = 0
+
     for safra in safras:
         safra_nome = safra["safra"]
         print(f"=====> Processing features for safra {safra_nome}")
@@ -47,15 +51,16 @@ def run():
         ocorrencias_df_safra = instances_df[instances_df["safra"] == safra_nome].copy()
 
         # FEATURE CALCULATION
-        # Calculating and storing accumulated precipitation
-        # Calculating number of days of precipitation
-        # Calculating DSV severity indicator
-        segment_id_list = ocorrencias_df_safra[["segment_id_precipitation"]]
+        ocorrencias_df_safra_filtrado = ocorrencias_df_safra[["segment_id_precipitation", "data_ocorrencia"]]
         p15d_list, p30d_list, p45d_list, p60d_list, p75d_list, p90d_list = [], [], [], [], [], []
         pc15d_list, pc30d_list, pc45d_list, pc60d_list, pc75d_list, pc90d_list = [], [], [], [], [], []
+        severity_acc_30d_list, severity_acc_safra_list = [], []
 
-        for seg_data in segment_id_list.values.tolist():
-            segment_id_precipitation = int(seg_data[0])
+        for segment_id_precipitation, data_ocorrencia_str in ocorrencias_df_safra_filtrado.values.tolist():
+            segment_id_precipitation = int(segment_id_precipitation)
+            data_ocorrencia = None
+            if data_ocorrencia_str is not None and isinstance(data_ocorrencia_str, str):
+                data_ocorrencia = datetime.strptime(data_ocorrencia_str, "%Y-%m-%d")
 
             p15, p30, p45, p60, p75, p90 = calculate_precipitation_acc(
                 conn,
@@ -69,8 +74,20 @@ def run():
                 safra["planting_start_date"],
                 safra["planting_end_date"],
             )
-            # dsv_30d = calculate_dsv_30d(conn, segment_id_precipitation, data)
 
+            severity_acc_30d = 0
+            severity_acc_safra = 0
+
+            if data_ocorrencia is not None:
+                severity_acc_30d = calculate_dsv_30d(conn, segment_id_precipitation, data_ocorrencia)
+                severity_acc_safra = calculate_dsv_safra(
+                    conn,
+                    segment_id_precipitation,
+                    safra["planting_start_date"],
+                    data_ocorrencia,
+                )
+
+            # Storing features
             p15d_list.append(p15)
             p30d_list.append(p30)
             p45d_list.append(p45)
@@ -85,6 +102,9 @@ def run():
             pc75d_list.append(pc75)
             pc90d_list.append(pc90)
 
+            severity_acc_30d_list.append(severity_acc_30d)
+            severity_acc_safra_list.append(severity_acc_safra)
+
         ocorrencias_df_safra["precipitation_15d"] = p15d_list
         ocorrencias_df_safra["precipitation_30d"] = p30d_list
         ocorrencias_df_safra["precipitation_45d"] = p45d_list
@@ -98,6 +118,9 @@ def run():
         ocorrencias_df_safra["precipitation_60d_count"] = pc60d_list
         ocorrencias_df_safra["precipitation_75d_count"] = pc75d_list
         ocorrencias_df_safra["precipitation_90d_count"] = pc90d_list
+
+        ocorrencias_df_safra["severity_acc_30d"] = severity_acc_30d_list
+        ocorrencias_df_safra["severity_acc_safra"] = severity_acc_safra_list
 
         ocorrencias_df = pd.concat([ocorrencias_df, ocorrencias_df_safra])
 
@@ -118,3 +141,11 @@ def run():
 
     conn.close()
     db_con_engine.dispose()
+
+
+def processing_limit_reached(count_limit, count) -> bool:
+    if count_limit is not None:
+        if count == count_limit:
+            return True
+
+    return False

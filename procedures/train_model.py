@@ -18,7 +18,7 @@ def run():
     data = pd.read_csv(OUTPUT_PATH / "instances_features_dataset.csv", sep=",")
 
     x = data[[
-        "precipitation_15d", "precipitation_15d", "precipitation_30d", "precipitation_45d",
+        "precipitation_15d", "precipitation_30d", "precipitation_45d",
         "precipitation_60d", "precipitation_75d", "precipitation_90d",
         "precipitation_15d_count", "precipitation_30d_count", "precipitation_45d_count",
         "precipitation_60d_count", "precipitation_75d_count", "precipitation_90d_count"

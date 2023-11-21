@@ -98,3 +98,57 @@ SELECT
 QUERY_SAFRAS = """
 SELECT safra, planting_start_date, planting_end_date FROM safra_date WHERE state = 'PR' AND safra <= '2022/2023'
 """
+
+QUERY_PRECIPITATION_ACC_30D = """
+SELECT
+    (SELECT SUM(p.prec) AS precipitation_15d_acc_b
+     FROM precipitation p
+     WHERE p.segment_id = :segment_id::int
+       AND p.date_precipitation::date >= (':target_date'::date - '30 days'::interval)
+       AND p.date_precipitation::date <= (':target_date'::date - '16 day'::interval)),
+    (SELECT SUM(p.prec) AS precipitation_15d_acc_a
+     FROM precipitation p
+     WHERE p.segment_id = :segment_id::int
+       AND p.date_precipitation::date >= (':target_date'::date - '15 days'::interval)
+       AND p.date_precipitation::date <= (':target_date'::date - '1 day'::interval))
+;
+"""
+
+
+QUERY_PRECIPITATION_COUNT_30D = """
+SELECT
+    (SELECT COUNT(p.prec) AS precipitation_15d_count_b
+     FROM precipitation p
+     WHERE p.segment_id = :segment_id::int
+       AND p.date_precipitation::date >= (':target_date'::date - '30 days'::interval)
+       AND p.date_precipitation::date <= (':target_date'::date - '16 day'::interval)
+       AND p.prec > 0.5),
+    (SELECT COUNT(p.prec) AS precipitation_15d_count_a
+     FROM precipitation p
+     WHERE p.segment_id = :segment_id::int
+       AND p.date_precipitation::date >= (':target_date'::date - '15 days'::interval)
+       AND p.date_precipitation::date <= (':target_date'::date - '1 day'::interval)
+       AND p.prec > 0.5)
+;
+"""
+
+
+QUERY_PRECIPITATION_ACC_SAFRA = """
+SELECT SUM(p.prec) AS precipitation_safra_acc
+FROM precipitation p
+ WHERE p.segment_id = :segment_id::int
+   AND p.date_precipitation::date >= ':start_date'::date
+   AND p.date_precipitation::date <= (':target_date'::date - '1 day'::interval)
+;
+"""
+
+
+QUERY_PRECIPITATION_COUNT_SAFRA = """
+SELECT COUNT(p.prec) AS precipitation_safra_count
+FROM precipitation p
+ WHERE p.segment_id = :segment_id::int
+   AND p.date_precipitation::date >= ':start_date'::date
+   AND p.date_precipitation::date <= (':target_date'::date - '1 day'::interval)
+   AND p.prec > 0.5
+;
+"""
