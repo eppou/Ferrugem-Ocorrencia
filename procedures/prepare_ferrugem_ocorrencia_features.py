@@ -34,7 +34,7 @@ Main pipeline to create the dataset with Soybean rust occurrences.
 # TODO: Verificar datas mais precisas das safras?
 # DONE: Separar geração das instâncias do cálculo dos features
 # DONE: Adicionar índice na busca do vizinho mais próximo no banco
-def run():
+def run(count_limit: int | None = None):
     db_con_engine = create_engine(DB_STRING)
     conn = db_con_engine.connect()
 
@@ -45,6 +45,9 @@ def run():
     count = 0
 
     for safra in safras:
+        if processing_limit_reached(count_limit, count):
+            break
+
         safra_nome = safra["safra"]
         print(f"=====> Processing features for safra {safra_nome}")
 
@@ -123,6 +126,8 @@ def run():
         ocorrencias_df_safra["severity_acc_safra"] = severity_acc_safra_list
 
         ocorrencias_df = pd.concat([ocorrencias_df, ocorrencias_df_safra])
+
+        count += 1
 
     # Output full dataset (possible contain extra information for debugging and visualization)
     ocorrencias_df.reset_index(inplace=True)
