@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from sqlalchemy import create_engine, Connection
 from calculation.precipitation import calculate_precipitation_acc, calculate_precipitation_count
 from calculation.severity import calculate_dsv_30d, calculate_dsv_safra
@@ -57,7 +57,10 @@ def run(count_limit: int | None = None):
         ocorrencias_df_safra_filtrado = ocorrencias_df_safra[["segment_id_precipitation", "data_ocorrencia"]]
         p15d_list, p30d_list, p45d_list, p60d_list, p75d_list, p90d_list = [], [], [], [], [], []
         pc15d_list, pc30d_list, pc45d_list, pc60d_list, pc75d_list, pc90d_list = [], [], [], [], [], []
-        severity_acc_30d_list, severity_acc_safra_list = [], []
+        severity_acc_30d_list = []
+        severity_acc_safra_5d_list, severity_acc_safra_10d_list, severity_acc_safra_15d_list = [], [], []
+        day_in_harvest_list = []
+        planting_start_date_list = []
 
         for segment_id_precipitation, data_ocorrencia_str in ocorrencias_df_safra_filtrado.values.tolist():
             segment_id_precipitation = int(segment_id_precipitation)
@@ -78,17 +81,34 @@ def run(count_limit: int | None = None):
                 safra["planting_end_date"],
             )
 
-            severity_acc_30d = 0
-            severity_acc_safra = 0
+            planting_start_date = safra["planting_start_date"]
+
+            severity_acc_30d = None
+            severity_acc_safra_5d, severity_acc_safra_10d, severity_acc_safra_15d = None, None, None
+            day_in_harvest = None
 
             if data_ocorrencia is not None:
                 severity_acc_30d = calculate_dsv_30d(conn, segment_id_precipitation, data_ocorrencia)
-                severity_acc_safra = calculate_dsv_safra(
+                severity_acc_safra_5d = calculate_dsv_safra(
                     conn,
                     segment_id_precipitation,
                     safra["planting_start_date"],
-                    data_ocorrencia,
+                    data_ocorrencia - timedelta(days=5),
                 )
+                severity_acc_safra_10d = calculate_dsv_safra(
+                    conn,
+                    segment_id_precipitation,
+                    safra["planting_start_date"],
+                    data_ocorrencia - timedelta(days=10),
+                )
+                severity_acc_safra_15d = calculate_dsv_safra(
+                    conn,
+                    segment_id_precipitation,
+                    safra["planting_start_date"],
+                    data_ocorrencia - timedelta(days=15),
+                    )
+
+                day_in_harvest = (data_ocorrencia.date() - safra["planting_start_date"]).days
 
             # Storing features
             p15d_list.append(p15)
@@ -105,8 +125,14 @@ def run(count_limit: int | None = None):
             pc75d_list.append(pc75)
             pc90d_list.append(pc90)
 
+            planting_start_date_list.append(planting_start_date)
+
             severity_acc_30d_list.append(severity_acc_30d)
-            severity_acc_safra_list.append(severity_acc_safra)
+            severity_acc_safra_5d_list.append(severity_acc_safra_5d)
+            severity_acc_safra_10d_list.append(severity_acc_safra_10d)
+            severity_acc_safra_15d_list.append(severity_acc_safra_15d)
+
+            day_in_harvest_list.append(day_in_harvest)
 
         ocorrencias_df_safra["precipitation_15d"] = p15d_list
         ocorrencias_df_safra["precipitation_30d"] = p30d_list
@@ -122,8 +148,14 @@ def run(count_limit: int | None = None):
         ocorrencias_df_safra["precipitation_75d_count"] = pc75d_list
         ocorrencias_df_safra["precipitation_90d_count"] = pc90d_list
 
+        ocorrencias_df_safra["planting_start_date"] = planting_start_date_list
+
         ocorrencias_df_safra["severity_acc_30d"] = severity_acc_30d_list
-        ocorrencias_df_safra["severity_acc_safra"] = severity_acc_safra_list
+        ocorrencias_df_safra["severity_acc_safra_5d"] = severity_acc_safra_5d_list
+        ocorrencias_df_safra["severity_acc_safra_10d"] = severity_acc_safra_10d_list
+        ocorrencias_df_safra["severity_acc_safra_15d"] = severity_acc_safra_15d_list
+
+        ocorrencias_df_safra["day_in_harvest"] = day_in_harvest_list
 
         ocorrencias_df = pd.concat([ocorrencias_df, ocorrencias_df_safra])
 
