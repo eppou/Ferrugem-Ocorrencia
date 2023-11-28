@@ -16,6 +16,7 @@ TEST_SIZE = 0.10
 def run():
     # collecting and preparing the data
     data = pd.read_csv(OUTPUT_PATH / "instances_features_dataset.csv", sep=",")
+    data = data[data["data_ocorrencia"].notnull()]
 
     x = data[[
         "precipitation_15d", "precipitation_30d", "precipitation_45d",
@@ -23,14 +24,14 @@ def run():
         "precipitation_15d_count", "precipitation_30d_count", "precipitation_45d_count",
         "precipitation_60d_count", "precipitation_75d_count", "precipitation_90d_count"
     ]]
-    y = data[["ocorrencia"]].astype(int)
+    y = data[["day_in_harvest"]].astype(int)
 
     # segmenting the dataset for training
     np.random.seed(SEED)
     train_x_raw, test_x_raw, train_y, test_y = train_test_split(
         x, y,
         test_size=TEST_SIZE,
-        stratify=y,
+        # stratify=y,
     )
 
     print(f"===> Total number of entries: {x.shape[0]}")
@@ -56,7 +57,7 @@ def run():
     print("===> Resulting accuracy: %.2f%%" % accuracy)
 
     # plot the data for verification
-    ax = sns.scatterplot(x="precipitation_30d", y="precipitation_30d_count", hue="ocorrencia",
+    ax = sns.scatterplot(x="precipitation_30d", y="precipitation_30d_count", hue="day_in_harvest",
                     data=pd.concat([x, y], axis=1), s=15)
-    ax.text(120, 23, "Distribuição das ocorrências", fontstyle="oblique", color="red")
+    ax.text(120, 23, "Distribuição do dia da safra das ocorrências", fontstyle="oblique", color="red")
     plt.show()

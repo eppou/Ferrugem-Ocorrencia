@@ -12,8 +12,7 @@ if __name__ == "__main__":
     print()
     start = time.time()
 
-    # prepare_features.run()
-    smt.run()
+    tm.run()
 
     end = time.time()
 
