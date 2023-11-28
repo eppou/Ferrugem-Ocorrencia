@@ -152,3 +152,12 @@ FROM precipitation p
    AND p.prec > 0.5
 ;
 """
+
+QUERY_PRECIPITATION_SAFRA_RAW = """
+SELECT p.segment_id, p.date_precipitation::date, p.prec
+FROM precipitation p
+ WHERE 1=1
+   AND p.date_precipitation::date >= ':start_date'::date
+   AND p.date_precipitation::date <= (':target_date'::date - '1 day'::interval)
+;
+"""
