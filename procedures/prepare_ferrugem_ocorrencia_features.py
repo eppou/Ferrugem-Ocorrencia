@@ -31,7 +31,10 @@ Main pipeline to create the dataset with Soybean rust occurrences.
 # DONE: Fazer recorte do mapa do Paraná (primeiro filtro)
 # DONE: Melhorar algoritmo do chute com mapas da plantação de soja no Paraná (segundo filtro)
 # DONE: Ajustar para intervalos de 15 dias
-# TODO: Verificar datas mais precisas das safras?
+# TODO: Verificar datas mais precisas das safras? Se não, usar as mesmas para todas as safras
+# TODO: Fazer o treinamento e processamento dos datasets com todas as ocorrencias até 2005
+# TODO: Fazer uma análise para verificar se o resultado com partes do dataset é melhor do que com todo dataset
+# TODO: Corrigir cálculo do erro
 # DONE: Separar geração das instâncias do cálculo dos features
 # DONE: Adicionar índice na busca do vizinho mais próximo no banco
 def run(count_limit: int | None = None):

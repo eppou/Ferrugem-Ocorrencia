@@ -13,6 +13,7 @@ SEED = 5
 TEST_SIZE = 0.10
 
 
+# TODO: Criar CSV com severidade x dias, ao invés de calcular toda hora
 def run():
     data = pd.read_csv(OUTPUT_PATH / "instances_features_dataset.csv", sep=",")
     data_filtered = data.copy()
