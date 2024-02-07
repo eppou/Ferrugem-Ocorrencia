@@ -16,6 +16,7 @@ numpy = "*"
 requests = "*"
 shapely = "*"
 scikit-learn = "*"
+geos = "*"
 
 [requires]
 python_version = "3.11"
