@@ -77,6 +77,7 @@ def run():
             target_date += timedelta(days=1)
             day_in_harvest += 1
 
+        day_in_harvest += 5
         print(
             f"\t- Calculated: threshold_5d: {threshold_5d} | severity: {severity} | Calculated day_in_harvest: {day_in_harvest}")
         severity_5d_list.append(severity)
@@ -95,6 +96,7 @@ def run():
             target_date += timedelta(days=1)
             day_in_harvest += 1
 
+        day_in_harvest += 10
         print(
             f"\t- Calculated: threshold_10d: {threshold_10d} | severity: {severity} | Calculated day_in_harvest: {day_in_harvest}")
         severity_10d_list.append(severity)
@@ -113,6 +115,7 @@ def run():
             target_date += timedelta(days=1)
             day_in_harvest += 1
 
+        day_in_harvest += 15
         print(
             f"\t- Calculated: threshold_15d: {threshold_15d} | severity: {severity} | Calculated day_in_harvest: {day_in_harvest}")
         severity_15d_list.append(severity)
