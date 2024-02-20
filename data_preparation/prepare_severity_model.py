@@ -12,6 +12,10 @@ from constants import DB_STRING, OUTPUT_PATH
 SEED = 5
 TEST_SIZE = 0.10
 
+"""
+Prepara dataset de saída, com as instâncias e features calculadas da severidade acumulada para o threshold determinado
+de 5, 10 e 15 dias. O threshold é calculado pela severidade média em 5, 10 e 15 dias antes da data_ocorrencia.
+"""
 
 # TODO: Criar CSV com severidade x dias, ao invés de calcular toda hora
 def run():

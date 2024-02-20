@@ -1,16 +1,12 @@
-import pandas as pd
 from datetime import datetime, timedelta
+
+import pandas as pd
 from sqlalchemy import create_engine
+
 from calculation.precipitation import calculate_precipitation_acc, calculate_precipitation_count
 from calculation.severity import calculate_dsv_30d, calculate_dsv_safra
-
 from constants import DB_STRING, OUTPUT_PATH
 from source.occurrence import get_safras
-
-"""
-Main pipeline to create the dataset with Soybean rust occurrences.
-"""
-
 
 # 1. Coletar todas as ocorrências por safra. Calcular features por data de ocorrência.
 # 2. Contar ocorrências e gerar não-ocorrencias por safra. Método: Sorteio. Definir distancia = 2 graus em duas direções

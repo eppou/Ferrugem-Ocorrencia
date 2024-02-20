@@ -1,18 +1,13 @@
 import pandas as pd
-from datetime import date
-from sqlalchemy import create_engine, Connection
-from calculation.coordinates import find_nearest_segment_id, determine_random_coordinate
+from sqlalchemy import create_engine
 
+from calculation.coordinates import find_nearest_segment_id, determine_random_coordinate
 from constants import DB_STRING, OUTPUT_PATH
 from data_preparation.constants import (
     QUERY_OCORRENCIAS,
     MIN_DISTANCE_FOR_NON_OCCURRENCES
 )
 from source.occurrence import get_safras
-
-"""
-Main pipeline to create the dataset with Soybean rust occurrences.
-"""
 
 
 # 1. Coletar todas as ocorrências por safra. Calcular features por data de ocorrência.
@@ -107,8 +102,3 @@ def create_random_non_occurrences(
         print(f"=====> Coordinate found! Value: (long/lat) (x/y) {coordinate}")
 
     return pd.DataFrame(data)
-
-
-def calculate_dsv_30d(conn: Connection, segment_id, target_date: date) -> float:
-    pass
-
