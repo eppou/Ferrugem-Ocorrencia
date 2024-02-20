@@ -1,11 +1,10 @@
 import pandas as pd
 from datetime import date
 from sqlalchemy import create_engine, Connection
-from calculation.precipitation import calculate_precipitation_acc, calculate_precipitation_count
 from calculation.coordinates import find_nearest_segment_id, determine_random_coordinate
 
 from constants import DB_STRING, OUTPUT_PATH
-from procedures.constants import (
+from data_preparation.constants import (
     QUERY_OCORRENCIAS,
     MIN_DISTANCE_FOR_NON_OCCURRENCES
 )

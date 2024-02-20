@@ -1,16 +1,10 @@
-import numpy as np
 import pandas as pd
-from datetime import date, datetime, timedelta
-from sqlalchemy import create_engine, Connection
+from datetime import datetime, timedelta
+from sqlalchemy import create_engine
 from calculation.precipitation import calculate_precipitation_acc, calculate_precipitation_count
 from calculation.severity import calculate_dsv_30d, calculate_dsv_safra
-from calculation.coordinates import find_nearest_segment_id, determine_random_coordinate
 
 from constants import DB_STRING, OUTPUT_PATH
-from procedures.constants import (
-    QUERY_OCORRENCIAS,
-    MIN_DISTANCE_FOR_NON_OCCURRENCES
-)
 from source.occurrence import get_safras
 
 """

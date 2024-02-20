@@ -1,6 +1,6 @@
 from sqlalchemy import Connection, text
 from datetime import date
-from procedures.constants import QUERY_SAFRAS
+from data_preparation.constants import QUERY_SAFRAS
 
 def get_safras(conn: Connection) -> list[dict[str, str | date]]:
     result = conn.execute(text(QUERY_SAFRAS)).fetchall()

@@ -13,7 +13,7 @@ from constants import (
     MAX_ATTEMPTS_RANDOM_COORDINATE,
     INPUT_PATH
 )
-from procedures.constants import QUERY_PRECIPITATION_SEGMENTS
+from data_preparation.constants import QUERY_PRECIPITATION_SEGMENTS
 
 
 def find_nearest_segment_id(conn: Connection, lat, long) -> int:
