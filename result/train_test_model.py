@@ -9,7 +9,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from constants import OUTPUT_PATH
 
-SEED = 5
+SEED = 2394
 TEST_SIZE = 0.10
 
 
@@ -43,18 +43,23 @@ def run():
     # test_x = scaler.transform(test_x_raw)
 
     # dummy classifier accuracy: To be used as a baseline
-    dummy_mostfrequent = DummyClassifier(strategy="most_frequent")
-    dummy_mostfrequent.fit(train_x_raw, train_y)
-    dummy_accuracy = dummy_mostfrequent.score(test_x_raw, test_y) * 100
-    print("===> DUMMY resulting accuracy: %.2f%%" % dummy_accuracy)
+    # dummy_mostfrequent = DummyClassifier(strategy="most_frequent")
+    # dummy_mostfrequent.fit(train_x_raw, train_y)
+    # dummy_accuracy = dummy_mostfrequent.score(test_x_raw, test_y) * 100
+    # print("===> DUMMY resulting accuracy: %.2f%%" % dummy_accuracy)
 
     # train the model and test, show accuracy results
     model = SVC(gamma="auto")
     model.fit(train_x_raw, train_y.values.ravel())
     predicted_results = model.predict(test_x_raw)
 
-    accuracy = accuracy_score(test_y, predicted_results) * 100
-    print("===> Resulting accuracy: %.2f%%" % accuracy)
+    result_analysis = test_y.copy()
+    result_analysis['predicted_results'] = predicted_results
+    result_analysis['distance'] = abs(result_analysis['day_in_harvest'] - result_analysis['predicted_results'])
+    result_analysis['error'] = result_analysis['distance'] / result_analysis['day_in_harvest']
+
+    accuracy = result_analysis['error'].mean() * 100
+    print("===> Resulting average error: %.2f%%" % accuracy)
 
     # plot the data for verification
     ax = sns.scatterplot(x="precipitation_30d", y="precipitation_30d_count", hue="day_in_harvest",
