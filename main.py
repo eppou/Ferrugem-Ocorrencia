@@ -3,8 +3,10 @@ import time
 from datetime import datetime
 from typing import Callable
 
-import result.train_test_model as ttm
+import data_preparation.prepare_severity_model as psm
+import data_preparation.prepare_severity_per_occurrence as spo
 import result.test_severity_model as smt
+import result.train_test_model as ttm
 
 
 def match_and_run():
@@ -17,6 +19,10 @@ def match_and_run():
             run(ttm.run)
         case "test_severity_model":
             run(smt.run)
+        case "prepare_severity_model":
+            run(psm.run)
+        case "prepare_severity_per_occurrence":
+            run(spo.run)
 
 
 def run(object_to_run: Callable):
@@ -30,7 +36,7 @@ def run(object_to_run: Callable):
 
     print()
     print(datetime.now().strftime("Execution ended at %Y-%m-%d %I:%M:%S %p"))
-    print(f"Execution took {round((end - start) * 10**3)} ms")
+    print(f"Execution took {round((end - start) * 10 ** 3)} ms")
 
 
 if __name__ == "__main__":
