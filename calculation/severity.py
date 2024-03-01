@@ -17,7 +17,7 @@ def calculate_dsv_30d(conn: Connection, segment_id, target_date: date):
     return dsv
 
 
-def calculate_dsv_safra(conn: Connection, segment_id, safra_start_date: date, target_date: date):
+def calculate_dsv_acc(conn: Connection, segment_id, safra_start_date: date, target_date: date):
     p, = calculate_precipitation_acc_safra(conn, segment_id, safra_start_date, target_date)
     pc, = calculate_precipitation_count_safra(conn, segment_id, safra_start_date, target_date)
 
@@ -27,10 +27,10 @@ def calculate_dsv_safra(conn: Connection, segment_id, safra_start_date: date, ta
     return dsv
 
 
-def calculate_dsv_safra_df(df: pd.DataFrame, segment_id, safra_start_date: date, target_date: date):
+def calculate_dsv_acc_with_df(df: pd.DataFrame, segment_id_precipitation, safra_start_date: date, target_date: date) -> float:
     safra_start_date_pd = safra_start_date
     target_date_pd = target_date
-    df_filtered = df[(df["segment_id"] == segment_id) & (df["date_precipitation"] >= safra_start_date_pd) & (df["date_precipitation"] <= target_date_pd)]
+    df_filtered = df[(df["segment_id"] == segment_id_precipitation) & (df["date_precipitation"] >= safra_start_date_pd) & (df["date_precipitation"] <= target_date_pd)]
 
     p = df_filtered["prec"].sum()
     pc = df_filtered.loc[(df["prec"] > 0.5)].shape[0]

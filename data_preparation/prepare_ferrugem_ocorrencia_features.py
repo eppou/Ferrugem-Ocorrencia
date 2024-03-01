@@ -4,7 +4,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 
 from calculation.precipitation import calculate_precipitation_acc, calculate_precipitation_count
-from calculation.severity import calculate_dsv_30d, calculate_dsv_safra
+from calculation.severity import calculate_dsv_30d, calculate_dsv_acc
 from constants import DB_STRING, OUTPUT_PATH
 from source.occurrence import get_safras
 
@@ -82,19 +82,19 @@ def run(count_limit: int | None = None):
 
             if data_ocorrencia is not None:
                 severity_acc_30d = calculate_dsv_30d(conn, segment_id_precipitation, data_ocorrencia)
-                severity_acc_safra_5d = calculate_dsv_safra(
+                severity_acc_safra_5d = calculate_dsv_acc(
                     conn,
                     segment_id_precipitation,
                     safra["planting_start_date"],
                     data_ocorrencia - timedelta(days=5),
                 )
-                severity_acc_safra_10d = calculate_dsv_safra(
+                severity_acc_safra_10d = calculate_dsv_acc(
                     conn,
                     segment_id_precipitation,
                     safra["planting_start_date"],
                     data_ocorrencia - timedelta(days=10),
                 )
-                severity_acc_safra_15d = calculate_dsv_safra(
+                severity_acc_safra_15d = calculate_dsv_acc(
                     conn,
                     segment_id_precipitation,
                     safra["planting_start_date"],
