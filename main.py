@@ -23,6 +23,8 @@ def match_and_run():
             run(psm.run)
         case "prepare_severity_per_occurrence":
             run(spo.run)
+        case _:
+            print(f"Unknown command: {command}")
 
 
 def run(object_to_run: Callable):
