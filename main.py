@@ -3,9 +3,8 @@ import time
 from datetime import datetime
 from typing import Callable
 
-import data_preparation.prepare_severity_model as psm
 import data_preparation.prepare_severity_per_occurrence as spo
-import result.test_severity_model as smt
+import result.test_baseline_model as baseline
 import result.train_test_model as ttm
 
 
@@ -17,10 +16,8 @@ def match_and_run():
     match command:
         case "train_test_model":
             run(ttm.run)
-        case "test_severity_model":
-            run(smt.run)
-        case "prepare_severity_model":
-            run(psm.run)
+        case "test_baseline_model":
+            run(baseline.run)
         case "prepare_severity_per_occurrence":
             run(spo.run)
         case _:
