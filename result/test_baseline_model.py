@@ -23,6 +23,7 @@ def run():
     severity_df = pd.read_csv(OUTPUT_PATH / "severity_per_occurrence.csv")
     all_instances_df = pd.read_csv(OUTPUT_PATH / "instances_features_dataset.csv")
     all_instances_df = all_instances_df[all_instances_df["ocorrencia_id"].notnull()]
+    all_instances_df = all_instances_df.drop(columns=["level_0", "index", "Unnamed: 0"])
 
     safras = [s['safra'] for s in get_safras(conn)]
     safras = safras[1:]  # Removendo a última safra, pois está muito incompleta
@@ -93,6 +94,7 @@ def prepare_severity_model_results(
         safra: str | None,
         fold_number: int,
 ):
+    # O train_y não é utilizado, pois o "treino" dos resultados é apenas o cálculo destes thresholds
     threshold_5d, threshold_10d, threshold_15d = calculate_threshold_for_baseline_model(train_x)
 
     test_x.drop(columns=["severity_acc_safra_5d", "severity_acc_safra_10d", "severity_acc_safra_15d"], inplace=True)
