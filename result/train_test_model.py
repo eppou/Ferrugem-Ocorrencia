@@ -1,6 +1,6 @@
 import pandas as pd
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import KFold
-from sklearn.svm import SVC
 from sqlalchemy import create_engine
 
 from constants import OUTPUT_PATH, DB_STRING
@@ -98,7 +98,9 @@ def train_test_model(
     # print("===> DUMMY resulting accuracy: %.2f%%" % dummy_accuracy)
 
     # train the model and test, show accuracy results
-    model = SVC(gamma="auto")
+    # model = SVC(gamma="auto")
+
+    model = RandomForestRegressor()
     model.fit(train_x, train_y.values.ravel())
     predicted_harvest_relative_day_array = model.predict(test_x)
 
