@@ -115,11 +115,11 @@ def prepare_severity_model_results(
             f"=====> [{value_test_count}/{total_values_for_testing}] {safra if safra is not None else ""} PARA OCORRÊNCIA COM: occurrence_id: {occurrence_id}")
 
         severity_acc_5d, predicted_harvest_relative_day_5d = determine_harvest_relative_day_from_threshold(
-            severity_df, occurrence_id, threshold_5d)
+            severity_df, occurrence_id, threshold_5d, 5)
         severity_acc_10d, predicted_harvest_relative_day_10d = determine_harvest_relative_day_from_threshold(
-            severity_df, occurrence_id, threshold_10d)
+            severity_df, occurrence_id, threshold_10d, 10)
         severity_acc_15d, predicted_harvest_relative_day_15d = determine_harvest_relative_day_from_threshold(
-            severity_df, occurrence_id, threshold_15d)
+            severity_df, occurrence_id, threshold_15d, 15)
 
         print(
             f"\t- For threshold_5d: {threshold_5d} "
@@ -173,14 +173,14 @@ def prepare_severity_model_results(
     return result_df
 
 
-def determine_harvest_relative_day_from_threshold(severity_df: pd.DataFrame, occurrence_id, threshold) -> tuple:
+def determine_harvest_relative_day_from_threshold(severity_df: pd.DataFrame, occurrence_id, threshold, threshold_days: int) -> tuple:
     df = severity_df
 
     df = df[df["ocorrencia_id"] == occurrence_id]
     df = df[df["severity_acc"] <= threshold]
     df = df.loc[df["severity_acc"].idxmax()]
 
-    return df["severity_acc"], df["harvest_relative_day"]
+    return df["severity_acc"], (df["harvest_relative_day"] + threshold_days)
 
 
 def write_result(result_df: pd.DataFrame, safra: str | None):
