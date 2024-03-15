@@ -3,9 +3,7 @@ input/*
 !input/shapefiles_*
 !input/testlab
 
-output/fileCPTEC
-output/backup
-output/*.csv
+output/
 
 __pycache__
 .idea
