@@ -3,6 +3,8 @@ import time
 from datetime import datetime
 from typing import Callable
 
+import data_preparation.prepare_ferrugem_ocorrencia_features as pof
+import data_preparation.prepare_ferrugem_ocorrencia_instances as poi
 import data_preparation.prepare_severity_per_occurrence as spo
 import result.test_baseline_model as baseline
 import result.train_test_model as ttm
@@ -20,6 +22,10 @@ def match_and_run():
             run(baseline.run)
         case "prepare_severity_per_occurrence":
             run(spo.run)
+        case "prepare_occurrence_instances":
+            run(poi.run)
+        case "prepare_occurrence_features":
+            run(pof.run)
         case _:
             print(f"Unknown command: {command}")
 

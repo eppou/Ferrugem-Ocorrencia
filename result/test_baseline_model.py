@@ -1,12 +1,14 @@
 from random import shuffle
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
 from sqlalchemy import create_engine
 
 from calculation.threshold import calculate_threshold_for_baseline_model
-from constants import DB_STRING, OUTPUT_PATH
+from constants import DB_STRING
 from source.occurrence import get_safras
+from helpers.input_output import output_file, get_latest_file
 
 K_FOLDS = 5
 
@@ -19,9 +21,11 @@ de 5, 10 e 15 dias. O threshold é calculado pela severidade média em 5, 10 e 1
 def run():
     db_con_engine = create_engine(DB_STRING)
     conn = db_con_engine.connect()
+    execution_started = datetime.now()
 
-    severity_df = pd.read_csv(OUTPUT_PATH / "severity_per_occurrence.csv")
-    all_instances_df = pd.read_csv(OUTPUT_PATH / "instances_features_dataset.csv")
+    severity_df = pd.read_csv(get_latest_file("prepare_severity_per_occurrence", "severity_per_occurrence.csv"))
+    all_instances_df = pd.read_csv(get_latest_file("prepare_occurrence_features", "instances_features_dataset.csv"))
+
     all_instances_df = all_instances_df[all_instances_df["ocorrencia_id"].notnull()]
     all_instances_df = all_instances_df.drop(columns=["level_0", "index", "Unnamed: 0"])
 
@@ -55,12 +59,12 @@ def run():
 
             result_df_all_folds = pd.concat([result_df_all_folds, result_df])
 
-        write_result(result_df_all_folds, safra)
+        write_result(execution_started, result_df_all_folds, safra)
 
         result_df_all_safras = pd.concat([result_df_all_safras, result_df_all_folds])
         print("\n\n")
 
-    write_result(result_df_all_safras, "all")
+    write_result(execution_started, result_df_all_safras, "all")
 
     print("=====> Resultados considerando TODAS as safras juntas")
     instances_df = all_instances_df.copy()
@@ -82,7 +86,7 @@ def run():
 
         result_df_all_folds = pd.concat([result_df_all_folds, result_df])
 
-    write_result(result_df_all_folds, None)
+    write_result(execution_started, result_df_all_folds, None)
 
 
 def prepare_severity_model_results(
@@ -176,14 +180,14 @@ def prepare_severity_model_results(
 def determine_harvest_relative_day_from_threshold(severity_df: pd.DataFrame, occurrence_id, threshold, threshold_days: int) -> tuple:
     df = severity_df
 
-    df = df[df["ocorrencia_id"] == occurrence_id]
+    df = df[df["occurrence_id"] == occurrence_id]
     df = df[df["severity_acc"] <= threshold]
     df = df.loc[df["severity_acc"].idxmax()]
 
     return df["severity_acc"], (df["harvest_relative_day"] + threshold_days)
 
 
-def write_result(result_df: pd.DataFrame, safra: str | None):
+def write_result(execution_started: datetime, result_df: pd.DataFrame, safra: str | None):
     filename = ""
     if safra is None:
         filename = "test_severity_model_results_all.csv"
@@ -193,7 +197,7 @@ def write_result(result_df: pd.DataFrame, safra: str | None):
     elif safra is not None:
         filename = f"test_severity_model_results_safra_{safra.replace("/", "_")}.csv"
 
-    result_df.to_csv(OUTPUT_PATH / filename)
+    result_df.to_csv(output_file(execution_started, "test_baseline_model", filename))
 
 
 def prepare_folds(df: pd.DataFrame, k: int) -> list[tuple]:

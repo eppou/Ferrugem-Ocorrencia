@@ -1,12 +1,15 @@
+from datetime import datetime
+
 import pandas as pd
 from sqlalchemy import create_engine
 
 from calculation.coordinates import find_nearest_segment_id, determine_random_coordinate
-from constants import DB_STRING, OUTPUT_PATH
+from constants import DB_STRING
 from data_preparation.constants import (
     QUERY_OCORRENCIAS,
     MIN_DISTANCE_FOR_NON_OCCURRENCES
 )
+from helpers.input_output import output_file
 from source.occurrence import get_safras
 
 
@@ -18,6 +21,7 @@ from source.occurrence import get_safras
 def run():
     db_con_engine = create_engine(DB_STRING)
     conn = db_con_engine.connect()
+    execution_started = datetime.now()
 
     instances_df_all = pd.DataFrame()
 
@@ -25,10 +29,13 @@ def run():
 
     for safra in safras:
         # INSTANCE DETERMINATION
-        print(f"=====> Processsing safra {safra['safra']}...")
+        print(f"=====> Processing safra {safra['safra']}...")
 
-        # Fetching occurrences from consorcio_antiferrugem database, per harverst
-        instances_ocorrencia_df = pd.read_sql_query(QUERY_OCORRENCIAS.replace(":safra", safra["safra"]), con=db_con_engine)
+        # Fetching occurrences from consorcio_antiferrugem database, per harvest
+        instances_ocorrencia_df = pd.read_sql_query(
+            QUERY_OCORRENCIAS.replace(":safra", safra["safra"]),
+            con=db_con_engine
+        )
 
         # Randomly generating non-occurrences
         used_coordinates = [
@@ -58,13 +65,21 @@ def run():
     print(f"=====> Size of instances dataset: {instances_df_all.shape[0]}")
 
     # Output full dataset (possible contain extra information for debugging and visualization)
-    instances_df_all.to_csv(OUTPUT_PATH / "instances_dataset_all.csv", index=False)
+    instances_df_all.to_csv(output_file(
+        execution_started,
+        "prepare_occurrence_instances",
+        "instances_dataset_all.csv"
+    ), index=False)
 
     instances_df = instances_df_all
     [[
         "safra", "ocorrencia_latitude", "ocorrencia_longitude", "ocorrencia"
     ]].copy()
-    instances_df.to_csv(OUTPUT_PATH / "instances_dataset.csv", index=False)
+    instances_df.to_csv(output_file(
+        execution_started,
+        "prepare_occurrence_instances",
+        "instances_dataset.csv"
+    ), index=False)
 
     conn.close()
     db_con_engine.dispose()
@@ -79,7 +94,7 @@ def create_random_non_occurrences(
     # Calcular ocorrências aleatórias. Quantidade especificada no parâmetro. Distância especificada no parâmetro.
     # Chutar um dia dentro da safra para "data de não ocorrencia"
 
-    # NOTA: É importante calcular coordenadas aleatórias por safra e não global, pois estamos analizando os eventos
+    # NOTA: É importante calcular coordenadas aleatórias por safra e não global, pois estamos analisando os eventos
     # de cada safra separadamente. Portanto, used_coordinates é resetado para cada invocação desta função.
 
     data: list[dict] = []

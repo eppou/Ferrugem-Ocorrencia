@@ -3,8 +3,10 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import KFold
 from sqlalchemy import create_engine
 
-from constants import OUTPUT_PATH, DB_STRING
+from constants import DB_STRING
 from source.occurrence import get_safras
+from helpers.input_output import get_latest_file, output_file
+from datetime import datetime
 
 SEED = 85682938
 K_FOLDS = 5
@@ -13,8 +15,9 @@ K_FOLDS = 5
 def run():
     db_con_engine = create_engine(DB_STRING)
     conn = db_con_engine.connect()
+    execution_started = datetime.now()
 
-    data_df = pd.read_csv(OUTPUT_PATH / "instances_features_dataset.csv")
+    data_df = pd.read_csv(get_latest_file("prepare_occurrence_features", "instances_features_dataset.csv"))
     data_df = data_df[data_df["data_ocorrencia"].notnull()]
     data_df = data_df.drop(columns=["level_0", "index", "Unnamed: 0"])
 
@@ -44,12 +47,12 @@ def run():
 
             result_df_all_folds = pd.concat([result_df_all_folds, result_df])
 
-        write_result(result_df_all_folds, safra)
+        write_result(execution_started, result_df_all_folds, safra)
 
         result_df_all_safras = pd.concat([result_df_all_safras, result_df_all_folds])
         print("\n\n")
 
-    write_result(result_df_all_safras, "all")
+    write_result(execution_started, result_df_all_safras, "all")
 
     print("=====> Resultados considerando TODAS as safras juntas")
     data_df_all = data_df.copy()
@@ -67,7 +70,7 @@ def run():
 
         result_df_all_folds = pd.concat([result_df_all_folds, result_df])
 
-    write_result(result_df_all_folds, None)
+    write_result(execution_started, result_df_all_folds, None)
 
     # plot the data for verification
     # ax = sns.scatterplot(x="precipitation_30d", y="precipitation_30d_count", hue="day_in_harvest",
@@ -147,7 +150,7 @@ def prepare_train_test_for_fold(df: pd.DataFrame, train_indices, test_indices) -
     return train_x, train_y, test_x, test_y
 
 
-def write_result(result_df: pd.DataFrame, safra: str | None):
+def write_result(execution_started: datetime, result_df: pd.DataFrame, safra: str | None):
     filename = ""
     if safra is None:
         filename = "train_test_model_results_all.csv"
@@ -157,4 +160,4 @@ def write_result(result_df: pd.DataFrame, safra: str | None):
     elif safra is not None:
         filename = f"train_test_model_results_safra_{safra.replace("/", "_")}.csv"
 
-    result_df.to_csv(OUTPUT_PATH / filename)
+    result_df.to_csv(output_file(execution_started, "train_test_model", filename))

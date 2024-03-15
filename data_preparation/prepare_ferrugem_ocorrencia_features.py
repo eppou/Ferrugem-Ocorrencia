@@ -5,8 +5,11 @@ from sqlalchemy import create_engine
 
 from calculation.precipitation import calculate_precipitation_acc, calculate_precipitation_count
 from calculation.severity import calculate_dsv_30d, calculate_dsv_acc
-from constants import DB_STRING, OUTPUT_PATH
+from constants import DB_STRING
+from data_preparation.constants import QUERY_PRECIPITATION
+from helpers.input_output import get_latest_file, output_file
 from source.occurrence import get_safras
+
 
 # 1. Coletar todas as ocorrências por safra. Calcular features por data de ocorrência.
 # 2. Contar ocorrências e gerar não-ocorrencias por safra. Método: Sorteio. Definir distancia = 2 graus em duas direções
@@ -28,10 +31,13 @@ from source.occurrence import get_safras
 # DONE: Separar geração das instâncias do cálculo dos features
 # DONE: Adicionar índice na busca do vizinho mais próximo no banco
 def run(count_limit: int | None = None):
+    execution_start = datetime.now()
+
     db_con_engine = create_engine(DB_STRING)
     conn = db_con_engine.connect()
 
-    instances_df = pd.read_csv(OUTPUT_PATH / "instances_dataset.csv")
+    precipitation_df = pd.read_sql_query(QUERY_PRECIPITATION)
+    instances_df = pd.read_csv(get_latest_file("prepare_occurrence_instances", "instances_dataset.csv"))
     safras = get_safras(conn)
     ocorrencias_df = pd.DataFrame()
 
@@ -45,6 +51,17 @@ def run(count_limit: int | None = None):
         print(f"=====> Processing features for safra {safra_nome}")
 
         ocorrencias_df_safra = instances_df[instances_df["safra"] == safra_nome].copy()
+        ocorrencias_df_safra = ocorrencias_df_safra[ocorrencias_df_safra["ocorrencia_id"].notnull()]
+
+        instances_count = 0
+        for index, instance in ocorrencias_df_safra.iterrows():
+            instances_count += 1
+            print(f"=====> Progress [{instances_count}/{ocorrencias_df_safra.shape[0]}]")
+
+            calculate_precipitation_all_harvest_days(
+                precipitation_df,
+
+            )
 
         # FEATURE CALCULATION
         ocorrencias_df_safra_filtrado = ocorrencias_df_safra[["segment_id_precipitation", "data_ocorrencia"]]
@@ -99,7 +116,7 @@ def run(count_limit: int | None = None):
                     segment_id_precipitation,
                     safra["planting_start_date"],
                     data_ocorrencia - timedelta(days=15),
-                    )
+                )
 
                 day_in_harvest = (data_ocorrencia.date() - safra["planting_start_date"]).days
 
@@ -156,7 +173,8 @@ def run(count_limit: int | None = None):
 
     # Output full dataset (possible contain extra information for debugging and visualization)
     ocorrencias_df.reset_index(inplace=True)
-    ocorrencias_df.to_csv(OUTPUT_PATH / "instances_features_dataset_all.csv")
+    ocorrencias_df.to_csv(
+        output_file(execution_start, "prepare_occurrence_features", "instances_features_dataset_all.csv"))
 
     ocorrencias_df = ocorrencias_df
     [[
@@ -167,7 +185,8 @@ def run(count_limit: int | None = None):
         "precipitation_60d_count", "precipitation_75d_count", "precipitation_90d_count",
         "ocorrencia"
     ]].copy()
-    ocorrencias_df.to_csv(OUTPUT_PATH / "instances_features_dataset.csv")
+    ocorrencias_df.to_csv(
+        output_file(execution_start, "prepare_occurrence_features", "instances_features_dataset.csv"))
 
     conn.close()
     db_con_engine.dispose()
@@ -179,3 +198,13 @@ def processing_limit_reached(count_limit, count) -> bool:
             return True
 
     return False
+
+
+def calculate_precipitation_all_harvest_days(
+        precipitation_df: pd.DataFrame,
+        occurrence_id,
+        segment_id_precipitation,
+        occurrence_date,
+        planting_start_date,
+) -> list:
+    pass
