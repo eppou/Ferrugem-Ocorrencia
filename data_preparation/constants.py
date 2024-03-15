@@ -161,3 +161,11 @@ FROM precipitation p
    AND p.date_precipitation::date <= (':target_date'::date - '1 day'::interval)
 ;
 """
+
+QUERY_PRECIPITATION_FOR_ALL_HARVESTS = """
+SELECT p.segment_id, p.date_precipitation::date, p.prec
+FROM precipitation p
+WHERE 1=1
+  AND date_precipitation >= (SELECT MIN(planting_start_date) FROM safra_date WHERE state = 'PR')
+  AND date_precipitation <= (SELECT MAX(planting_end_date) FROM safra_date WHERE state = 'PR')
+"""

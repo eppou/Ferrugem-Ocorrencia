@@ -24,7 +24,7 @@ def run():
     execution_started = datetime.now()
 
     severity_df = pd.read_csv(get_latest_file("prepare_severity_per_occurrence", "severity_per_occurrence.csv"))
-    all_instances_df = pd.read_csv(get_latest_file("prepare_occurrence_features", "instances_features_dataset.csv"))
+    all_instances_df = pd.read_csv(get_latest_file("prepare_occurrence_features", "instances_features_dataset_all.csv"))
 
     all_instances_df = all_instances_df[all_instances_df["ocorrencia_id"].notnull()]
     all_instances_df = all_instances_df.drop(columns=["level_0", "index", "Unnamed: 0"])
@@ -101,7 +101,7 @@ def prepare_severity_model_results(
     # O train_y não é utilizado, pois o "treino" dos resultados é apenas o cálculo destes thresholds
     threshold_5d, threshold_10d, threshold_15d = calculate_threshold_for_baseline_model(train_x)
 
-    test_x.drop(columns=["severity_acc_safra_5d", "severity_acc_safra_10d", "severity_acc_safra_15d"], inplace=True)
+    test_x.drop(columns=["severity_acc_5d_before_occurrence", "severity_acc_10d_before_occurrence", "severity_acc_15d_before_occurrence"], inplace=True)
 
     total_values_for_testing = test_x.shape[0]
     value_test_count = 0
@@ -110,7 +110,7 @@ def prepare_severity_model_results(
     severity_acc_5d_list, severity_acc_10d_list, severity_acc_15d_list = [], [], []
     predicted_harvest_relative_day_5d_list, predicted_harvest_relative_day_10d_list, predicted_harvest_relative_day_15d_list = [], [], []
 
-    # determining the day_in_harvest values
+    # determining the harvest_relative_day values
     for index, instance in test_x.iterrows():
         value_test_count += 1
 
@@ -153,7 +153,7 @@ def prepare_severity_model_results(
         predicted_harvest_relative_day_15d_list.append(predicted_harvest_relative_day_15d)
 
     result_df = test_x.copy()
-    result_df['harvest_relative_day'] = test_y['day_in_harvest']
+    result_df['harvest_relative_day'] = test_y['harvest_relative_day']
 
     result_df["threshold_5d"] = threshold_5d
     result_df["severity_acc_5d"] = severity_acc_5d_list
@@ -222,15 +222,15 @@ def prepare_train_test_for_fold(df: pd.DataFrame, train_indices, test_indices) -
     test_df = df.filter(items=test_indices, axis=0)
 
     train_x = train_df[[
-        "ocorrencia_id", "segment_id_precipitation", "planting_start_date",
-        "severity_acc_safra_5d", "severity_acc_safra_10d", "severity_acc_safra_15d",
+        "ocorrencia_id", "segment_id_precipitation", "harvest_start_date",
+        "severity_acc_5d_before_occurrence", "severity_acc_10d_before_occurrence", "severity_acc_15d_before_occurrence",
     ]]
-    train_y = train_df[["day_in_harvest"]].astype(int)
+    train_y = train_df[["harvest_relative_day"]].astype(int)
 
     test_x = test_df[[
-        "ocorrencia_id", "segment_id_precipitation", "planting_start_date",
-        "severity_acc_safra_5d", "severity_acc_safra_10d", "severity_acc_safra_15d",
+        "ocorrencia_id", "segment_id_precipitation", "harvest_start_date",
+        "severity_acc_5d_before_occurrence", "severity_acc_10d_before_occurrence", "severity_acc_15d_before_occurrence",
     ]]
-    test_y = test_df[["day_in_harvest"]].astype(int)
+    test_y = test_df[["harvest_relative_day"]].astype(int)
 
     return train_x, train_y, test_x, test_y

@@ -6,6 +6,7 @@ from typing import Callable
 import data_preparation.prepare_ferrugem_ocorrencia_features as pof
 import data_preparation.prepare_ferrugem_ocorrencia_instances as poi
 import data_preparation.prepare_severity_per_occurrence as spo
+import data_preparation.prepare_precipitation as pp
 import result.test_baseline_model as baseline
 import result.train_test_model as ttm
 
@@ -22,6 +23,8 @@ def match_and_run():
             run(baseline.run)
         case "prepare_severity_per_occurrence":
             run(spo.run)
+        case "prepare_precipitation":
+            run(pp.run)
         case "prepare_occurrence_instances":
             run(poi.run)
         case "prepare_occurrence_features":
@@ -41,7 +44,9 @@ def run(object_to_run: Callable):
 
     print()
     print(datetime.now().strftime("Execution ended at %Y-%m-%d %I:%M:%S %p"))
-    print(f"Execution took {round((end - start) * 10 ** 3)} ms")
+    execution_ms = round((end - start) * 10 ** 3)
+    execution_s = round(execution_ms / 1000.0, 2)
+    print(f"Execution took {execution_ms}ms ({execution_s}s)")
 
 
 if __name__ == "__main__":

@@ -17,9 +17,9 @@ def run():
     conn = db_con_engine.connect()
     execution_started = datetime.now()
 
-    data_df = pd.read_csv(get_latest_file("prepare_occurrence_features", "instances_features_dataset.csv"))
+    data_df = pd.read_csv(get_latest_file("prepare_occurrence_features", "instances_features_dataset_all.csv"))
     data_df = data_df[data_df["data_ocorrencia"].notnull()]
-    data_df = data_df.drop(columns=["level_0", "index", "Unnamed: 0"])
+    data_df = data_df.drop(columns=["level_0", "Unnamed: 0"])
 
     safras = [s['safra'] for s in get_safras(conn)]
     safras = safras[1:]  # Removendo a última safra, pois está muito incompleta
@@ -73,7 +73,7 @@ def run():
     write_result(execution_started, result_df_all_folds, None)
 
     # plot the data for verification
-    # ax = sns.scatterplot(x="precipitation_30d", y="precipitation_30d_count", hue="day_in_harvest",
+    # ax = sns.scatterplot(x="precipitation_30d", y="precipitation_30d_count", hue="harvest_relative_day",
     #                      data=pd.concat([x, y], axis=1), s=15)
     # ax.text(120, 23, "Distribuição do dia da safra das ocorrências", fontstyle="oblique", color="red")
     # plt.show()
@@ -110,7 +110,6 @@ def train_test_model(
     result_df = test_y.copy()
 
     result_df["safra"] = safra
-    result_df = result_df.rename(columns={"day_in_harvest": "harvest_relative_day"})
 
     result_df['predicted_harvest_relative_day'] = predicted_harvest_relative_day_array
     result_df['distance'] = abs(result_df['harvest_relative_day'] - result_df['predicted_harvest_relative_day'])
@@ -131,21 +130,11 @@ def prepare_train_test_for_fold(df: pd.DataFrame, train_indices, test_indices) -
     train_df = df.filter(items=train_indices, axis=0)
     test_df = df.filter(items=test_indices, axis=0)
 
-    train_x = train_df[[
-        "precipitation_15d", "precipitation_30d", "precipitation_45d",
-        "precipitation_60d", "precipitation_75d", "precipitation_90d",
-        "precipitation_15d_count", "precipitation_30d_count", "precipitation_45d_count",
-        "precipitation_60d_count", "precipitation_75d_count", "precipitation_90d_count"
-    ]]
-    train_y = train_df[["day_in_harvest"]].astype(int)
+    train_x = train_df.filter(axis=1, regex="precipitation_")
+    train_y = train_df[["harvest_relative_day"]].astype(int)
 
-    test_x = test_df[[
-        "precipitation_15d", "precipitation_30d", "precipitation_45d",
-        "precipitation_60d", "precipitation_75d", "precipitation_90d",
-        "precipitation_15d_count", "precipitation_30d_count", "precipitation_45d_count",
-        "precipitation_60d_count", "precipitation_75d_count", "precipitation_90d_count"
-    ]]
-    test_y = test_df[["day_in_harvest"]].astype(int)
+    test_x = test_df.filter(axis=1, regex="precipitation_")
+    test_y = test_df[["harvest_relative_day"]].astype(int)
 
     return train_x, train_y, test_x, test_y
 

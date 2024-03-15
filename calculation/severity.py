@@ -32,7 +32,7 @@ def calculate_dsv_acc_with_df(df: pd.DataFrame, segment_id_precipitation, safra_
     target_date_pd = target_date
     df_filtered = df[(df["segment_id"] == segment_id_precipitation) & (df["date_precipitation"] >= safra_start_date_pd) & (df["date_precipitation"] <= target_date_pd)]
 
-    p = df_filtered["prec"].sum()
+    p = df_filtered.loc[df["prec"] > 0.5]["prec"].sum()
     pc = df_filtered.loc[(df["prec"] > 0.5)].shape[0]
 
     dsv = pdsv_generic(p, pc)

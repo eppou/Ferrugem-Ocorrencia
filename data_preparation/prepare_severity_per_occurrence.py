@@ -5,22 +5,22 @@ from sqlalchemy import create_engine
 
 from calculation.precipitation import collect_precipitation_safra
 from calculation.severity import calculate_dsv_acc_with_df
-from constants import DB_STRING
+from constants import DB_STRING, MAX_HARVEST_RELATIVE_DAY
 from helpers.input_output import get_latest_file, output_file
 
 
 def calculate_severity_all_harvest_days(
         occurrence_id,
         segment_id_precipitation,
-        occurrence_date,
         planting_start_date,
         precipitation_per_segment_id_df
 ) -> list:
     severities = []
     current_date = planting_start_date
+    end_date = planting_start_date + timedelta(days=MAX_HARVEST_RELATIVE_DAY)
     current_harvest_relative_day = 0
 
-    while current_date <= occurrence_date:
+    while current_date <= end_date:
         severity_acc = calculate_dsv_acc_with_df(
             precipitation_per_segment_id_df,
             segment_id_precipitation,
@@ -85,7 +85,6 @@ def run():
         severity_list_instance = calculate_severity_all_harvest_days(
             occurrence_id,
             segment_id_precipitation,
-            occurrence_date,
             planting_start_date,
             precipitation_per_segment_id_df,
         )
