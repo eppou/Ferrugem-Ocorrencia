@@ -144,6 +144,7 @@ def calculate_precipitation_all_harvest_days(
         precipitation_features[f"precipitation_count_{current_harvest_relative_day}d"] = precipitation_count
 
         current_harvest_relative_day += 7
+        current_date = pd.to_datetime(harvest_start_date + timedelta(days=current_harvest_relative_day))
 
     return precipitation_features
 
