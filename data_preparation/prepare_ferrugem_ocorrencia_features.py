@@ -1,4 +1,5 @@
 from datetime import datetime, date, timedelta
+from time import sleep
 
 import pandas as pd
 from sqlalchemy import create_engine, text
@@ -34,9 +35,11 @@ def run(count_limit: int | None = None):
     db_con_engine = create_engine(DB_STRING)
     conn = db_con_engine.connect()
 
-    precipitation_df = pd.read_sql_query(sql=text(QUERY_PRECIPITATION_FOR_ALL_HARVESTS), con=conn, parse_dates=["date_precipitation"])
+    precipitation_df = pd.read_sql_query(sql=text(QUERY_PRECIPITATION_FOR_ALL_HARVESTS), con=conn,
+                                         parse_dates=["date_precipitation"])
     severity_df = pd.read_csv(get_latest_file("prepare_severity_per_occurrence", "severity_per_occurrence.csv"))
-    instances_df = pd.read_csv(get_latest_file("prepare_occurrence_instances", "instances_dataset.csv"), parse_dates=["data_ocorrencia"])
+    instances_df = pd.read_csv(get_latest_file("prepare_occurrence_instances", "instances_dataset.csv"),
+                               parse_dates=["data_ocorrencia"])
     safras = get_safras(conn)
     ocorrencias_df = pd.DataFrame()
 
@@ -71,7 +74,8 @@ def run(count_limit: int | None = None):
 
             precipitation_features_df = pd.DataFrame(precipitation_features, index=[index])
             ocorrencias_df_safra_generated = pd.merge(
-                ocorrencias_df_safra_generated, precipitation_features_df, how="outer", left_index=True, right_index=True)
+                ocorrencias_df_safra_generated, precipitation_features_df, how="outer", left_index=True,
+                right_index=True)
 
             harvest_relative_day = (occurrence_date.date() - safra["planting_start_date"]).days
             ocorrencias_df_safra_generated["harvest_relative_day"] = harvest_relative_day
@@ -154,8 +158,20 @@ def calculate_severity(
         occurrence_id,
         harvest_relative_day,
 ) -> dict:
+    if harvest_relative_day < 0:
+        print(
+            f"=====> calculate_severity for {occurrence_id=} and {harvest_relative_day=}: "
+            f"harvest_relative_day is NEGATIVE. Fallback value is 0."
+        )
+        sleep(0.5)
+        harvest_relative_day = 0
+
     df = severity_df
     df = df[df["occurrence_id"] == occurrence_id]
     df = df[df["harvest_relative_day"] == harvest_relative_day]
+
+    if len(df["severity_acc"].array) == 0:
+        raise RuntimeError(
+            f"Severity Accumulated (severity_acc) not found for {occurrence_id=} and {harvest_relative_day=}")
 
     return df["severity_acc"].array[0]
