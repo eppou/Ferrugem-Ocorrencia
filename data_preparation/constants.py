@@ -7,7 +7,8 @@ WHERE o.safra = ':safra';
 """
 
 # TODO: Usar ST_DWithin ao inves deste https://postgis.net/docs/ST_DWithin.html
-# TODO: Usar índice na coluna geometry
+# TODO: Verificar se indice na coluna geometry é o apropriado
+# DONE: Usar índice na coluna geometry
 QUERY_PRECIPITATION_SEGMENTS = """
 SELECT DISTINCT 
     segment_id, 
