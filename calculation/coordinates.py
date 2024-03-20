@@ -1,6 +1,7 @@
 import random
 
 import geopandas as gpd
+import numpy as np
 from shapely.geometry import Point
 from sqlalchemy import Connection, text
 
@@ -16,7 +17,10 @@ from constants import (
 from data_preparation.constants import QUERY_PRECIPITATION_SEGMENTS
 
 
-def find_nearest_segment_id(conn: Connection, lat, long) -> int:
+def find_nearest_segment_id(conn: Connection, occurrence_id: int, lat, long) -> int:
+    if lat is None or long is None or np.isnan(lat) or np.isnan(long):
+        raise RuntimeError(f"Invalid values for lat/long {occurrence_id=} {lat=} {long=}")
+
     result = conn.execute(
         text(QUERY_PRECIPITATION_SEGMENTS.replace(":latitude", str(lat)).replace(":longitude", str(long)))
     ).fetchone()

@@ -10,11 +10,11 @@ WHERE o.safra = ':safra';
 # TODO: Verificar se indice na coluna geometry é o apropriado
 # DONE: Usar índice na coluna geometry
 QUERY_PRECIPITATION_SEGMENTS = """
-SELECT DISTINCT 
-    segment_id, 
-    st_distance('SRID=4674;POINT(:longitude :latitude)'::geometry, p.geometry) AS distance
+SELECT
+    p.segment_id, 
+    st_distance(p.geometry, 'SRID=4674;POINT(:longitude :latitude)'::geometry) AS distance
 FROM precipitation p
-ORDER BY distance
+ORDER BY p.geometry <-> 'SRID=4674;POINT(:longitude :latitude)'::geometry
 LIMIT 1;
 """
 

@@ -1,9 +1,9 @@
-from datetime import datetime
+from datetime import datetime, date
 
 import pandas as pd
 from sqlalchemy import create_engine
 
-from calculation.coordinates import find_nearest_segment_id, determine_random_coordinate
+from calculation.coordinates import find_nearest_segment_id
 from constants import DB_STRING
 from data_preparation.constants import QUERY_OCORRENCIAS
 from helpers.input_output import output_file
@@ -29,24 +29,29 @@ def run():
         print(f"=====> Processing safra {safra['safra']}...")
 
         # Fetching occurrences from consorcio_antiferrugem database, per harvest
-        instances_ocorrencia_df = pd.read_sql_query(
+        df = pd.read_sql_query(
             QUERY_OCORRENCIAS.replace(":safra", safra["safra"]),
             con=db_con_engine
         )
 
-        instances_df_all = pd.concat([instances_df_all, instances_ocorrencia_df])
+        df = df[df["ocorrencia_latitude"].notna()]
+        df = df[df["ocorrencia_longitude"].notna()]
+
+        instances_df_all = pd.concat([instances_df_all, df])
 
     # Assigning a segment_id_precipitation - a match for a position for the nearest precipitation data
     print("=====> Assigning a segment_id_precipitation (for precipitation data)")
-    for index, ocorrencia in instances_df_all.iterrows():
-        latitude = ocorrencia["ocorrencia_latitude"]
-        longitude = ocorrencia["ocorrencia_longitude"]
+    for index, instance in instances_df_all.iterrows():
+        latitude = instance["ocorrencia_latitude"]
+        longitude = instance["ocorrencia_longitude"]
+        occurrence_id = instance["ocorrencia_id"]
         print(f"Finding nearest segment for (lat/long) {latitude} {longitude}, index {index}")
 
-        segment_id_precipitation = find_nearest_segment_id(conn, latitude, longitude)
+        segment_id_precipitation = find_nearest_segment_id(conn, occurrence_id, latitude, longitude)
         print(f"Segment found: {segment_id_precipitation}, index {index}")
 
         instances_df_all.at[index, "segment_id_precipitation"] = segment_id_precipitation
+        instances_df_all.at[index, "harvest_start_date"] = get_harvest_start_date(safras, instance["safra"])
 
     print(f"=====> Size of instances dataset: {instances_df_all.shape[0]}")
 
@@ -69,3 +74,14 @@ def run():
 
     conn.close()
     db_con_engine.dispose()
+
+
+def get_harvest_start_date(safras: list, safra_current: str) -> date:
+    safras_indexed = {}
+    for safra in safras:
+        safras_indexed[safra["safra"]] = safra
+
+    if safra_current not in safras_indexed.keys():
+        raise RuntimeError(f"Safra is not present in safra information from database {safra_current=}")
+
+    return safras_indexed[safra_current]["planting_start_date"]
