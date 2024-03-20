@@ -5,10 +5,7 @@ from sqlalchemy import create_engine
 
 from calculation.coordinates import find_nearest_segment_id, determine_random_coordinate
 from constants import DB_STRING
-from data_preparation.constants import (
-    QUERY_OCORRENCIAS,
-    MIN_DISTANCE_FOR_NON_OCCURRENCES
-)
+from data_preparation.constants import QUERY_OCORRENCIAS
 from helpers.input_output import output_file
 from source.occurrence import get_safras
 
@@ -36,17 +33,6 @@ def run():
             QUERY_OCORRENCIAS.replace(":safra", safra["safra"]),
             con=db_con_engine
         )
-
-        # Randomly generating non-occurrences
-        used_coordinates = [
-            (x[0], x[1]) for x in instances_ocorrencia_df[["ocorrencia_longitude", "ocorrencia_latitude"]].values.tolist()]
-        instances_nao_ocorrencia_df = create_random_non_occurrences(
-            MIN_DISTANCE_FOR_NON_OCCURRENCES,
-            len(instances_ocorrencia_df.index),
-            safra["safra"],
-            used_coordinates,
-        )
-        instances_ocorrencia_df = pd.concat([instances_ocorrencia_df, instances_nao_ocorrencia_df]).reset_index()
 
         instances_df_all = pd.concat([instances_df_all, instances_ocorrencia_df])
 
@@ -83,37 +69,3 @@ def run():
 
     conn.close()
     db_con_engine.dispose()
-
-
-def create_random_non_occurrences(
-        min_distance: float,
-        count: int,
-        safra: str,
-        used_coordinates: list[tuple[float, float]]  # x, y => long, lat
-):
-    # Calcular ocorrências aleatórias. Quantidade especificada no parâmetro. Distância especificada no parâmetro.
-    # Chutar um dia dentro da safra para "data de não ocorrencia"
-
-    # NOTA: É importante calcular coordenadas aleatórias por safra e não global, pois estamos analisando os eventos
-    # de cada safra separadamente. Portanto, used_coordinates é resetado para cada invocação desta função.
-
-    data: list[dict] = []
-
-    for x in range(count):
-        coordinate = determine_random_coordinate(used_coordinates, min_distance)
-        used_coordinates.append(coordinate)
-
-        data.append({
-            'ocorrencia_id': '',
-            'data': '',
-            'safra': safra,
-            'cidade_nome': '',
-            'estado_nome': '',
-            'ocorrencia_localizacao': '',
-            'ocorrencia_latitude': coordinate[1],   # y => Latitude
-            'ocorrencia_longitude': coordinate[0],  # x => Longitude
-            'ocorrencia': False,
-        })
-        print(f"=====> Coordinate found! Value: (long/lat) (x/y) {coordinate}")
-
-    return pd.DataFrame(data)
