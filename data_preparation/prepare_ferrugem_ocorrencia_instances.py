@@ -31,11 +31,13 @@ def run():
         # Fetching occurrences from consorcio_antiferrugem database, per harvest
         df = pd.read_sql_query(
             QUERY_OCORRENCIAS.replace(":safra", safra["safra"]),
-            con=db_con_engine
+            con=db_con_engine,
+            parse_dates=["data_ocorrencia"],
         )
 
         df = df[df["ocorrencia_latitude"].notna()]
         df = df[df["ocorrencia_longitude"].notna()]
+        df = df[df["data_ocorrencia"].dt.year >= 2000]  # Filtrando resultados incorretos no formato '0001-XX-XX'
 
         instances_df_all = pd.concat([instances_df_all, df])
 
