@@ -35,10 +35,6 @@ def run():
             parse_dates=["data_ocorrencia"],
         )
 
-        df = df[df["ocorrencia_latitude"].notna()]
-        df = df[df["ocorrencia_longitude"].notna()]
-        df = df[df["data_ocorrencia"].dt.year >= 2000]  # Filtrando resultados incorretos no formato '0001-XX-XX'
-
         instances_df_all = pd.concat([instances_df_all, df])
 
     # Assigning a segment_id_precipitation - a match for a position for the nearest precipitation data
@@ -55,10 +51,6 @@ def run():
         print(f"Segment found: {segment_id_precipitation}, index {index}")
 
         instances_df_all.at[index, "segment_id_precipitation"] = segment_id_precipitation
-
-        harvest_start_date = get_harvest_start_date(safras, instance["safra"])
-        print(f"Add harvest_start_date: {harvest_start_date.strftime("%Y-%m-%d")=}, {index=}")
-        instances_df_all.at[index, "harvest_start_date"] = harvest_start_date
 
     print(f"=====> Size of instances dataset: {instances_df_all.shape[0]}")
 
