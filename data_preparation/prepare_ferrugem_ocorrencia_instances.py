@@ -43,6 +43,8 @@ def run():
 
     # Assigning a segment_id_precipitation - a match for a position for the nearest precipitation data
     print("=====> Assigning a segment_id_precipitation (for precipitation data)")
+    instances_df_all = instances_df_all.reset_index()
+
     for index, instance in instances_df_all.iterrows():
         latitude = instance["ocorrencia_latitude"]
         longitude = instance["ocorrencia_longitude"]
@@ -53,7 +55,10 @@ def run():
         print(f"Segment found: {segment_id_precipitation}, index {index}")
 
         instances_df_all.at[index, "segment_id_precipitation"] = segment_id_precipitation
-        instances_df_all.at[index, "harvest_start_date"] = get_harvest_start_date(safras, instance["safra"])
+
+        harvest_start_date = get_harvest_start_date(safras, instance["safra"])
+        print(f"Add harvest_start_date: {harvest_start_date.strftime("%Y-%m-%d")=}, {index=}")
+        instances_df_all.at[index, "harvest_start_date"] = harvest_start_date
 
     print(f"=====> Size of instances dataset: {instances_df_all.shape[0]}")
 
