@@ -13,5 +13,5 @@ PARANA_MAX_LONGITUDE = -48.00
 
 MAX_ATTEMPTS_RANDOM_COORDINATE = 5000000
 
-# 203 is the max multiple of 7 >= 200 (which is about the biggest harvest_relative_day of occurrence)
-MAX_HARVEST_RELATIVE_DAY = 245
+# This number is the max multiple of 7 >= 200 (which is about the biggest harvest_relative_day of occurrence)
+MAX_HARVEST_RELATIVE_DAY = 301

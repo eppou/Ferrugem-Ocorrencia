@@ -27,13 +27,11 @@ def calculate_dsv_acc(conn: Connection, segment_id, safra_start_date: date, targ
     return dsv
 
 
-def calculate_dsv_acc_with_df(df: pd.DataFrame, segment_id_precipitation, safra_start_date: date, target_date: date) -> float:
-    safra_start_date_pd = safra_start_date
-    target_date_pd = target_date
-    df_filtered = df[(df["segment_id"] == segment_id_precipitation) & (df["date_precipitation"] >= safra_start_date_pd) & (df["date_precipitation"] <= target_date_pd)]
+def calculate_dsv_acc_with_df(df_filtered: pd.DataFrame, target_date: date) -> float:
+    df_filtered = df_filtered[(df_filtered["date_precipitation"] <= target_date)]
 
-    p = df_filtered.loc[df["prec"] > 0.5]["prec"].sum()
-    pc = df_filtered.loc[(df["prec"] > 0.5)].shape[0]
+    p = df_filtered.loc[df_filtered["prec"] > 0.5]["prec"].sum()
+    pc = df_filtered.loc[(df_filtered["prec"] > 0.5)].shape[0]
 
     dsv = pdsv_generic(p, pc)
     dsv = round(dsv, 4)
