@@ -77,7 +77,7 @@ def run(count_limit: int | None = None):
                 ocorrencias_df_safra_generated, precipitation_features_df, how="outer", left_index=True,
                 right_index=True)
 
-            harvest_relative_day = (occurrence_date.date() - safra["planting_start_date"]).days
+            harvest_relative_day = calculate_harvest_relative_day(occurrence_date.date(), safra["planting_start_date"])
             ocorrencias_df_safra_generated["harvest_relative_day"] = harvest_relative_day
             ocorrencias_df_safra_generated["harvest_start_date"] = harvest_start_date
 
@@ -122,6 +122,15 @@ def processing_limit_reached(count_limit, count) -> bool:
             return True
 
     return False
+
+
+def calculate_harvest_relative_day(occurrence_date: date, harvest_start_date: date) -> int:
+    harvest_relative_day = (occurrence_date - harvest_start_date).days
+
+    if harvest_relative_day < 0:
+        return 0
+
+    return harvest_relative_day
 
 
 def calculate_precipitation_all_harvest_days(
