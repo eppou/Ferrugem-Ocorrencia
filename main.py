@@ -29,6 +29,12 @@ def match_and_run():
             run(poi.run)
         case "prepare_occurrence_features":
             run(pof.run)
+        case "pipeline":
+            run(poi.run)
+            run(pof.run)
+            run(baseline.run)
+            run(ttm.run)
+
         case _:
             print(f"Unknown command: {command}")
 
