@@ -1,16 +1,21 @@
-from datetime import datetime, timedelta
 import os
+from datetime import datetime, timedelta
 
 import requests
 
 from constants import OUTPUT_PATH
 
-
 """
 Download script for grib files from INPE (CPTEC). Precipitation data.
 Does not import the data, only downloads it.
 """
-def run(start_date_str: str, end_date_str: str, force_redownload=False):
+
+
+def run():
+    download("2000-06-01", "2024-02-29")
+
+
+def download(start_date_str: str, end_date_str: str, force_redownload=False):
     base_url = "http://ftp.cptec.inpe.br/"
 
     for paths in get_paths(start_date_str, end_date_str):
@@ -25,7 +30,7 @@ def run(start_date_str: str, end_date_str: str, force_redownload=False):
             os.makedirs(OUTPUT_PATH / paths[1])
         open(OUTPUT_PATH / paths[2], 'wb').write(r.content)
 
-        print(f"Downloaded file {paths[0]}.")
+        print(f"Downloaded file {paths[0]} to {OUTPUT_PATH / paths[2]}")
 
 
 def get_paths(target_start_date: str, target_end_date: str) -> list[tuple[str, str, str]]:

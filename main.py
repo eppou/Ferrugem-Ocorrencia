@@ -9,6 +9,7 @@ import data_preparation.prepare_severity_per_occurrence as spo
 import data_preparation.prepare_precipitation as pp
 import result.test_baseline_model as baseline
 import result.train_test_model as ttm
+import testlab.download_cptec as dpp
 
 
 def match_and_run():
@@ -25,6 +26,8 @@ def match_and_run():
             run(spo.run)
         case "prepare_precipitation":
             run(pp.run)
+        case "download_precipitation":
+            run(dpp.run)
         case "prepare_occurrence_instances":
             run(poi.run)
         case "prepare_occurrence_features":
