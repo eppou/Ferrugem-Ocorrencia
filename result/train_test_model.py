@@ -12,7 +12,7 @@ SEED = 85682938
 K_FOLDS = 5
 
 
-def run():
+def run(safras: list = None):
     db_con_engine = create_engine(DB_STRING)
     conn = db_con_engine.connect()
     execution_started = datetime.now()
@@ -21,8 +21,11 @@ def run():
     data_df = data_df[data_df["data_ocorrencia"].notnull()]
     data_df = data_df.drop(columns=["level_0", "Unnamed: 0"])
 
-    safras = [s['safra'] for s in get_safras(conn)]
-    safras = safras[1:]  # Removendo a última safra, pois está muito incompleta
+    data_all_safras_df = pd.DataFrame()
+
+    if safras is None:
+        safras = [s['safra'] for s in get_safras(conn)]
+        safras = safras[1:]  # Removendo a última safra, pois está muito incompleta
 
     print("=====> Resultados para CADA safra")
     result_df_all_safras = pd.DataFrame()
@@ -32,6 +35,8 @@ def run():
 
         print(f"- Filtrando por Safra: {safra}")
         data_df_safra = data_df_safra[data_df_safra["safra"] == safra]
+        data_all_safras_df = pd.concat([data_all_safras_df, data_df_safra])
+
         data_df_safra = data_df_safra.reset_index()
 
         kf = KFold(n_splits=K_FOLDS, shuffle=True, random_state=SEED)
@@ -55,7 +60,7 @@ def run():
     write_result(execution_started, result_df_all_safras, "all")
 
     print("=====> Resultados considerando TODAS as safras juntas")
-    data_df_all = data_df.copy()
+    data_df_all = data_all_safras_df.copy()
     data_df_all.reset_index(inplace=True)
 
     kf = KFold(n_splits=K_FOLDS, shuffle=True, random_state=SEED)

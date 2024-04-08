@@ -29,8 +29,11 @@ def run():
     all_instances_df = all_instances_df[all_instances_df["ocorrencia_id"].notnull()]
     all_instances_df = all_instances_df.drop(columns=["level_0", "index", "Unnamed: 0"])
 
-    safras = [s['safra'] for s in get_safras(conn)]
-    safras = safras[1:]  # Removendo a última safra, pois está muito incompleta
+    instances_all_safras_df = pd.DataFrame()
+
+    if safras is None:
+        safras = [s['safra'] for s in get_safras(conn)]
+        safras = safras[1:]  # Removendo a última safra, pois está muito incompleta
 
     print("=====> Resultados para CADA safra")
     result_df_all_safras = pd.DataFrame()
@@ -40,6 +43,7 @@ def run():
 
         print(f"- Filtrando por Safra: {safra}")
         instances_safra_df = instances_df[instances_df["safra"] == safra]
+        instances_all_safras_df = pd.concat([instances_all_safras_df, instances_safra_df])
 
         print("- Preparando folds (k=5)")
         folds = prepare_folds(instances_safra_df, K_FOLDS)
@@ -67,7 +71,7 @@ def run():
     write_result(execution_started, result_df_all_safras, "all")
 
     print("=====> Resultados considerando TODAS as safras juntas")
-    instances_df = all_instances_df.copy()
+    instances_df = instances_all_safras_df.copy()
 
     print("- Preparando folds (k=5)")
     folds = prepare_folds(instances_df, K_FOLDS)
@@ -101,7 +105,8 @@ def prepare_severity_model_results(
     # O train_y não é utilizado, pois o "treino" dos resultados é apenas o cálculo destes thresholds
     threshold_5d, threshold_10d, threshold_15d = calculate_threshold_for_baseline_model(train_x)
 
-    test_x.drop(columns=["severity_acc_5d_before_occurrence", "severity_acc_10d_before_occurrence", "severity_acc_15d_before_occurrence"], inplace=True)
+    test_x.drop(columns=["severity_acc_5d_before_occurrence", "severity_acc_10d_before_occurrence",
+                         "severity_acc_15d_before_occurrence"], inplace=True)
 
     total_values_for_testing = test_x.shape[0]
     value_test_count = 0
@@ -177,7 +182,8 @@ def prepare_severity_model_results(
     return result_df
 
 
-def determine_harvest_relative_day_from_threshold(severity_df: pd.DataFrame, occurrence_id, threshold, threshold_days: int) -> tuple:
+def determine_harvest_relative_day_from_threshold(severity_df: pd.DataFrame, occurrence_id, threshold,
+                                                  threshold_days: int) -> tuple:
     df = severity_df
 
     df = df[df["occurrence_id"] == occurrence_id]
