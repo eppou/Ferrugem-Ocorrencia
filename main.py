@@ -16,22 +16,6 @@ def match_and_run():
     if len(sys.argv) < 2:
         return
 
-    safras = [
-        "2021/2022",
-        "2020/2021",
-        "2019/2020",
-        "2018/2019",
-        "2017/2018",
-        "2016/2017",
-        "2015/2016",
-        "2014/2015",
-        "2013/2014",
-        "2012/2013",
-        "2011/2012",
-        "2010/2011",
-    ]
-    safras_param = [safras]
-
     command = sys.argv[1]
     match command:
         case "train_test_model":
@@ -62,8 +46,8 @@ def match_and_run():
             run(ttm.run)
 
         case "pipeline_results":
-            run(baseline.run, safras_param)
-            run(ttm.run, safras_param)
+            run(baseline.run)
+            run(ttm.run)
 
         case _:
             print(f"Unknown command: {command}")
