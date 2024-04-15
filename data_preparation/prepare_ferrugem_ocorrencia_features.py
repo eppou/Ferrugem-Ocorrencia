@@ -1,6 +1,7 @@
 from datetime import datetime, date, timedelta
 from time import sleep
 
+import numpy as np
 import pandas as pd
 from sqlalchemy import create_engine, text
 
@@ -8,6 +9,8 @@ from constants import DB_STRING, MAX_HARVEST_RELATIVE_DAY
 from data_preparation.constants import QUERY_PRECIPITATION_FOR_ALL_HARVESTS
 from helpers.input_output import get_latest_file, output_file
 from source.occurrence import get_safras
+
+import statistics as s
 
 
 # 1. Coletar todas as ocorrências por safra. Calcular features por data de ocorrência.
@@ -38,7 +41,7 @@ def run(count_limit: int | None = None):
     precipitation_df = pd.read_sql_query(sql=text(QUERY_PRECIPITATION_FOR_ALL_HARVESTS), con=conn,
                                          parse_dates=["date_precipitation"])
     severity_df = pd.read_csv(get_latest_file("prepare_severity_per_occurrence", "severity_per_occurrence.csv"))
-    instances_df = pd.read_csv(get_latest_file("prepare_occurrence_instances", "instances_dataset.csv"),
+    instances_df = pd.read_csv(get_latest_file("prepare_occurrence_instances", "instances_dataset_all.csv"),
                                parse_dates=["data_ocorrencia"])
     safras = get_safras(conn)
     ocorrencias_df = pd.DataFrame()
@@ -52,19 +55,18 @@ def run(count_limit: int | None = None):
         safra_nome = safra["safra"]
         print(f"=====> Processing features for safra {safra_nome}")
 
-        ocorrencias_df_safra = instances_df[instances_df["safra"] == safra_nome].copy()
-        ocorrencias_df_safra = ocorrencias_df_safra[ocorrencias_df_safra["ocorrencia_id"].notnull()]
+        occurrences_df_safra = instances_df[instances_df["safra"] == safra_nome].copy()
+        occurrences_df_safra = occurrences_df_safra[occurrences_df_safra["ocorrencia_id"].notnull()]
 
         instances_count = 0
-        for index, instance in ocorrencias_df_safra.iterrows():
+        for index, instance in occurrences_df_safra.iterrows():
             instances_count += 1
             ocorrencias_df_safra_generated = instance.copy().to_frame().T
-            print(f"=====> Progress [{instances_count}/{ocorrencias_df_safra.shape[0]}]")
+            print(f"=====> Progress [{instances_count}/{occurrences_df_safra.shape[0]}]")
 
             harvest_start_date = safra["planting_start_date"]
             segment_id_precipitation = instance["segment_id_precipitation"]
             occurrence_id = instance["ocorrencia_id"]
-            occurrence_date = instance["data_ocorrencia"]
 
             precipitation_features = calculate_precipitation_all_harvest_days(
                 precipitation_df,
@@ -77,7 +79,7 @@ def run(count_limit: int | None = None):
                 ocorrencias_df_safra_generated, precipitation_features_df, how="outer", left_index=True,
                 right_index=True)
 
-            harvest_relative_day = calculate_harvest_relative_day(occurrence_date.date(), safra["planting_start_date"])
+            harvest_relative_day = calculate_harvest_relative_day(instance)
             ocorrencias_df_safra_generated["harvest_relative_day"] = harvest_relative_day
             ocorrencias_df_safra_generated["harvest_start_date"] = harvest_start_date
 
@@ -124,9 +126,21 @@ def processing_limit_reached(count_limit, count) -> bool:
     return False
 
 
-def calculate_harvest_relative_day(occurrence_date: date, harvest_start_date: date) -> int:
-    harvest_relative_day = (occurrence_date - harvest_start_date).days
+def calculate_harvest_relative_day(df: pd.Series) -> int:
+    emergence_days_min = df["emergence_days_min"]
+    emergence_days_max = df["emergence_days_max"]
+    days_after_emergence_min = df["days_after_emergence_min"]
+    days_after_emergence_max = df["days_after_emergence_max"]
 
+    emergence_days = s.mean([emergence_days_max, emergence_days_min])
+    days_after_emergence = s.mean([days_after_emergence_max, days_after_emergence_min])
+
+    harvest_relative_day = round(emergence_days + days_after_emergence, 0)
+
+    if np.isnan(harvest_relative_day):
+        harvest_relative_day = 0
+
+    # TODO: Considerar dropar essas linhas ao invés de atribuir zero
     if harvest_relative_day < 0:
         return 0
 

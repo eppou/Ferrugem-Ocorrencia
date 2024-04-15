@@ -1,4 +1,4 @@
-from random import shuffle
+import random as r
 from datetime import datetime
 
 import numpy as np
