@@ -19,6 +19,7 @@ de 5, 10 e 15 dias. O threshold é calculado pela severidade média em 5, 10 e 1
 
 
 def run():
+def run(safras: list = None):
     db_con_engine = create_engine(DB_STRING)
     conn = db_con_engine.connect()
     execution_started = datetime.now()
