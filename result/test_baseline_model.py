@@ -11,6 +11,7 @@ from source.occurrence import get_safras
 from helpers.input_output import output_file, get_latest_file
 
 K_FOLDS = 5
+SEED = 492848
 
 """
 Prepara dataset de saída, com as instâncias e features calculadas da severidade acumulada para o threshold determinado
@@ -209,7 +210,7 @@ def write_result(execution_started: datetime, result_df: pd.DataFrame, safra: st
 
 def prepare_folds(df: pd.DataFrame, k: int) -> list[tuple]:
     data_index = df.index.to_list()
-    shuffle(data_index)
+    r.Random(SEED).shuffle(data_index)
 
     fold_size = len(data_index) // k
     folds = []
