@@ -52,8 +52,6 @@ def calculate_severity_all_harvest_days(
     return severities
 
 
-# TODO: Talvez calcular severidade para a safra, ao invés de ser por instância de ocorrência. É mais flexível e menos
-# repetitivo. Na hora de usar, podemos filtrar por harvest_relative_day e safra
 def run(silent=True):
     db_con_engine = create_engine(DB_STRING)
     conn = db_con_engine.connect()

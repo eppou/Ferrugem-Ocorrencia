@@ -6,9 +6,10 @@ FROM ferrugem_asiatica_occurrences o
 WHERE o.safra = ':safra';
 """
 
-# TODO: Usar ST_DWithin ao inves deste https://postgis.net/docs/ST_DWithin.html
-# TODO: Verificar se indice na coluna geometry é o apropriado
+# DONE: Usar ST_DWithin ao inves deste https://postgis.net/docs/ST_DWithin.html
+# DONE: Verificar se indice na coluna geometry é o apropriado
 # DONE: Usar índice na coluna geometry
+# DONE: Otimizar consulta usando operador de distância KNN <->
 QUERY_PRECIPITATION_SEGMENTS = """
 SELECT
     p.segment_id, 
@@ -95,7 +96,6 @@ SELECT
 
 """
 
-# TODO: Remove filter from query
 QUERY_SAFRAS = """
 SELECT safra, planting_start_date, planting_end_date FROM safra_date WHERE state = 'PR' AND safra <= '2022/2023'
 """

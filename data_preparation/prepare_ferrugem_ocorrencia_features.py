@@ -26,10 +26,10 @@ import statistics as s
 # DONE: Fazer recorte do mapa do Paraná (primeiro filtro)
 # DONE: Melhorar algoritmo do chute com mapas da plantação de soja no Paraná (segundo filtro)
 # DONE: Ajustar para intervalos de 15 dias
-# TODO: Verificar datas mais precisas das safras? Se não, usar as mesmas para todas as safras
-# TODO: Fazer o treinamento e processamento dos datasets com todas as ocorrencias até 2005
+# DONE: Verificar datas mais precisas das safras? Se não, usar as mesmas para todas as safras (como: Utilizando dia relativo da safra para estádios fenológicos)
+# DONE: Fazer o treinamento e processamento dos datasets com todas as ocorrencias até 2005
 # TODO: Fazer uma análise para verificar se o resultado com partes do dataset é melhor do que com todo dataset
-# TODO: Corrigir cálculo do erro
+# DONE: Corrigir cálculo do erro
 # DONE: Separar geração das instâncias do cálculo dos features
 # DONE: Adicionar índice na busca do vizinho mais próximo no banco
 def run(count_limit: int | None = None):
@@ -103,6 +103,22 @@ def run(count_limit: int | None = None):
             ocorrencias_df_safra_generated["severity_acc_10d_before_occurrence"] = severity_acc_10d_before_occurrence
             ocorrencias_df_safra_generated["severity_acc_15d_before_occurrence"] = severity_acc_15d_before_occurrence
 
+            # TODO: Feature: Média de severidade diária até o dia da ocorrência (severidade_acc_d / harvest_relative_day)
+            # TODO: Feature: Média de severidade diária até o dia da ocorrência (severidade_acc_d / harvest_relative_day) para todas as instâncias da mesma safra
+            # TODO: Feature: Mediana da severidade diária até o dia da ocorrência
+            # TODO: Feature: Desvio-padrão da severidade diária até o dia da ocorrência
+            # TODO: Feature: Desvio-padrão da severidade diária até 30 dias antes da ocorrência
+
+            # TODO: Feature: Média do harvest_relative_day para a safra
+
+            # TODO: Feature: Percentual de variacão de chuva nos últimos 30 dias, normalizado para (0,1) (para todas as instâncias da mesma safra)
+
+            # TODO: Zerar severidade acumuladas para dias após o dia da ocorrência?
+
+            # TODO: Features: Features para estádios fenológico (V1, V2... R1...). Cada um seria uma coluna. Agora, incluir precipitation_acc e count.
+            # TODO: Feature: planting_relative_day: Dia relativo ao inicio da safra quando foi plantado a safra para aquela ocorrência. Calcular pelo estadio fenológico.
+            # TODO: Renomear: harvest_relative_day para occurrence_harvest_relative_day
+
             ocorrencias_df = pd.concat([ocorrencias_df, ocorrencias_df_safra_generated])
 
     # Output full dataset (possible contain extra information for debugging and visualization)
@@ -126,6 +142,7 @@ def processing_limit_reached(count_limit, count) -> bool:
     return False
 
 
+# TODO: Aprimorar chute, ao invés de usar média, usar uma relação entre os dias da safra esperados por grupo relativo
 def calculate_harvest_relative_day(df: pd.Series) -> int:
     emergence_days_min = df["emergence_days_min"]
     emergence_days_max = df["emergence_days_max"]
