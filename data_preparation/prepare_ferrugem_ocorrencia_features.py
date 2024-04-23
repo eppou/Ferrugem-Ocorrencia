@@ -116,8 +116,9 @@ def run(count_limit: int | None = None):
             # TODO: Zerar severidade acumuladas para dias após o dia da ocorrência?
 
             # TODO: Features: Features para estádios fenológico (V1, V2... R1...). Cada um seria uma coluna. Agora, incluir precipitation_acc e count.
-            # TODO: Feature: planting_relative_day: Dia relativo ao inicio da safra quando foi plantado a safra para aquela ocorrência. Calcular pelo estadio fenológico.
-            # TODO: Renomear: harvest_relative_day para occurrence_harvest_relative_day
+            # TODO: Calcular features baseados em planting_start_date ao invés de harvest_relative_day
+            # TODO: Feature: planting_relative_day: Dia relativo ao inicio da safra quando foi plantado a safra para aquela ocorrência. Calcular pelo planting_start_date (que é calculado pelo estadio fenológico).
+            # TODO: Renomear: harvest_relative_day para planting_relative_day
 
             ocorrencias_df = pd.concat([ocorrencias_df, ocorrencias_df_safra_generated])
 
