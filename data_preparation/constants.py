@@ -97,7 +97,7 @@ SELECT
 """
 
 QUERY_SAFRAS = """
-SELECT safra, planting_start_date, planting_end_date FROM safra_date WHERE state = 'PR' AND safra <= '2022/2023'
+SELECT safra, harvest_start_date, harvest_end_date FROM safra_date WHERE state = 'PR' AND safra <= '2022/2023'
 """
 
 QUERY_PRECIPITATION_ACC_30D = """
@@ -154,7 +154,7 @@ FROM precipitation p
 ;
 """
 
-QUERY_PRECIPITATION_SAFRA_RAW = """
+QUERY_PRECIPITATION_INTERVAL_RAW = """
 SELECT p.segment_id, p.date_precipitation::date, p.prec
 FROM precipitation p
  WHERE 1=1
@@ -163,10 +163,7 @@ FROM precipitation p
 ;
 """
 
-QUERY_PRECIPITATION_FOR_ALL_HARVESTS = """
+QUERY_PRECIPITATION = """
 SELECT p.segment_id, p.date_precipitation::date, p.prec
 FROM precipitation p
-WHERE 1=1
-  AND date_precipitation >= (SELECT MIN(planting_start_date) FROM safra_date WHERE state = 'PR')
-  AND date_precipitation <= (SELECT MAX(planting_end_date) FROM safra_date WHERE state = 'PR')
 """

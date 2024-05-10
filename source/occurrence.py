@@ -9,8 +9,8 @@ def get_safras(conn: Connection) -> list[dict[str, str | date]]:
     for row in result:
         safras.append({
             'safra': row[0],
-            'planting_start_date': row[1],
-            'planting_end_date': row[2],
+            'harvest_start_date': row[1],
+            'harvest_end_date': row[2],
         })
 
     return safras

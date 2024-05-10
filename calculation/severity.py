@@ -27,6 +27,7 @@ def calculate_dsv_acc(conn: Connection, segment_id, safra_start_date: date, targ
     return dsv
 
 
+# TODO: Bug na tabela precipitation, duplicação dos resultados diários
 def calculate_dsv_acc_with_df(df_filtered: pd.DataFrame, target_date: date) -> float:
     df_filtered = df_filtered[(df_filtered["date_precipitation"] <= target_date)]
 

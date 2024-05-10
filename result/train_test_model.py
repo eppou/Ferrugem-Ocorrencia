@@ -78,7 +78,7 @@ def run(safras: list = None):
     write_result(execution_started, result_df_all_folds, None)
 
     # plot the data for verification
-    # ax = sns.scatterplot(x="precipitation_30d", y="precipitation_30d_count", hue="harvest_relative_day",
+    # ax = sns.scatterplot(x="precipitation_30d", y="precipitation_30d_count", hue="planting_relative_day",
     #                      data=pd.concat([x, y], axis=1), s=15)
     # ax.text(120, 23, "Distribuição do dia da safra das ocorrências", fontstyle="oblique", color="red")
     # plt.show()
@@ -110,19 +110,19 @@ def train_test_model(
 
     model = RandomForestRegressor()
     model.fit(train_x, train_y.values.ravel())
-    predicted_harvest_relative_day_array = model.predict(test_x)
+    predicted_planting_relative_day_array = model.predict(test_x)
 
     result_df = test_y.copy()
 
     result_df["safra"] = safra
 
-    result_df['predicted_harvest_relative_day'] = predicted_harvest_relative_day_array
-    result_df['distance'] = abs(result_df['harvest_relative_day'] - result_df['predicted_harvest_relative_day'])
+    result_df['predicted_planting_relative_day'] = predicted_planting_relative_day_array
+    result_df['distance'] = abs(result_df['planting_relative_day'] - result_df['predicted_planting_relative_day'])
 
     result_df["fold"] = fold_number
     result_df.reset_index(inplace=True)
 
-    # result_df['error'] = result_df['distance'] / result_df['harvest_relative_day']
+    # result_df['error'] = result_df['distance'] / result_df['planting_relative_day']
     # accuracy = result_df['error'].mean() * 100
     # print(f"=====> Fold: {fold_number}/{K_FOLDS} Resulting average error: %.2f%%" % accuracy)
 
@@ -136,10 +136,10 @@ def prepare_train_test_for_fold(df: pd.DataFrame, train_indices, test_indices) -
     test_df = df.filter(items=test_indices, axis=0)
 
     train_x = train_df.filter(axis=1, regex="precipitation_")
-    train_y = train_df[["harvest_relative_day"]].astype(int)
+    train_y = train_df[["planting_relative_day"]].astype(int)
 
     test_x = test_df.filter(axis=1, regex="precipitation_")
-    test_y = test_df[["harvest_relative_day"]].astype(int)
+    test_y = test_df[["planting_relative_day"]].astype(int)
 
     return train_x, train_y, test_x, test_y
 

@@ -5,7 +5,7 @@ from sqlalchemy import Connection, text
 
 from data_preparation.constants import QUERY_PRECIPITATION_ACC, QUERY_PRECIPITATION_COUNT, QUERY_PRECIPITATION_ACC_30D, \
     QUERY_PRECIPITATION_COUNT_30D, QUERY_PRECIPITATION_ACC_SAFRA, QUERY_PRECIPITATION_COUNT_SAFRA, \
-    QUERY_PRECIPITATION_SAFRA_RAW
+    QUERY_PRECIPITATION_INTERVAL_RAW
 
 
 def calculate_precipitation_acc(conn: Connection, segment_id, start_date: date, end_date: date) -> tuple:
@@ -100,13 +100,13 @@ def calculate_precipitation_count_safra(conn: Connection, segment_id, start_date
     return result.t
 
 
-def collect_precipitation_safra(conn: Connection, start_date: date, target_date: date) -> pd.DataFrame:
+def collect_precipitation_planting(conn: Connection, start_date: date, target_date: date) -> pd.DataFrame:
     start_date_str = start_date.strftime("%Y-%m-%d")
     target_date_str = target_date.strftime("%Y-%m-%d")
 
     df = pd.read_sql_query(
         sql=text(
-            QUERY_PRECIPITATION_SAFRA_RAW
+            QUERY_PRECIPITATION_INTERVAL_RAW
             .replace(":target_date", target_date_str)
             .replace(":start_date", start_date_str)
         ),

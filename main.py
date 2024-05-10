@@ -25,7 +25,7 @@ def match_and_run():
             run(baseline.run)
 
         case "prepare_severity_per_occurrence":
-            run(spo.run)
+            run(spo.run, [False])
 
         case "prepare_precipitation":
             run(pp.run)
@@ -41,6 +41,7 @@ def match_and_run():
 
         case "pipeline":
             run(poi.run)
+            run(spo.run)
             run(pof.run)
             run(baseline.run)
             run(ttm.run)
@@ -58,7 +59,7 @@ def run(object_to_run: Callable, args: list = None):
     print()
     start = time.time()
 
-    if args is None:
+    if args is None or not args:
         object_to_run()
     else:
         object_to_run(*args)

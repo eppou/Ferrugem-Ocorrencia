@@ -4,7 +4,7 @@ import pandas as pd
 from sqlalchemy import create_engine, text
 
 from constants import DB_STRING
-from data_preparation.constants import QUERY_PRECIPITATION_FOR_ALL_HARVESTS
+from data_preparation.constants import QUERY_PRECIPITATION
 from helpers.input_output import output_file
 
 """
@@ -17,6 +17,6 @@ def run():
     conn = db_con_engine.connect()
     execution_start = datetime.now()
 
-    precipitation_df = pd.read_sql_query(sql=text(QUERY_PRECIPITATION_FOR_ALL_HARVESTS), con=conn)
+    precipitation_df = pd.read_sql_query(sql=text(QUERY_PRECIPITATION), con=conn)
 
     precipitation_df.to_csv(output_file(execution_start, "prepare_precipitation", "precipitation_all.csv"))

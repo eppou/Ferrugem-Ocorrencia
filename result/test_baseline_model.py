@@ -114,9 +114,9 @@ def prepare_severity_model_results(
     print(f"=====> Testando com {total_values_for_testing} valores")
 
     severity_acc_5d_list, severity_acc_10d_list, severity_acc_15d_list = [], [], []
-    predicted_harvest_relative_day_5d_list, predicted_harvest_relative_day_10d_list, predicted_harvest_relative_day_15d_list = [], [], []
+    predicted_planting_relative_day_5d_list, predicted_planting_relative_day_10d_list, predicted_planting_relative_day_15d_list = [], [], []
 
-    # determining the harvest_relative_day values
+    # determining the planting_relative_day values
     for index, instance in test_x.iterrows():
         value_test_count += 1
 
@@ -124,54 +124,54 @@ def prepare_severity_model_results(
         print(
             f"=====> [{value_test_count}/{total_values_for_testing}] {safra if safra is not None else ""} PARA OCORRÊNCIA COM: occurrence_id: {occurrence_id}")
 
-        severity_acc_5d, predicted_harvest_relative_day_5d = determine_harvest_relative_day_from_threshold(
+        severity_acc_5d, predicted_planting_relative_day_5d = determine_planting_relative_day_from_threshold(
             severity_df, occurrence_id, threshold_5d, 5)
-        severity_acc_10d, predicted_harvest_relative_day_10d = determine_harvest_relative_day_from_threshold(
+        severity_acc_10d, predicted_planting_relative_day_10d = determine_planting_relative_day_from_threshold(
             severity_df, occurrence_id, threshold_10d, 10)
-        severity_acc_15d, predicted_harvest_relative_day_15d = determine_harvest_relative_day_from_threshold(
+        severity_acc_15d, predicted_planting_relative_day_15d = determine_planting_relative_day_from_threshold(
             severity_df, occurrence_id, threshold_15d, 15)
 
         print(
             f"\t- For threshold_5d: {threshold_5d} "
             f"| Severity (accumulated): {severity_acc_5d} "
-            f"| Predicted harvest_relative_day: {predicted_harvest_relative_day_5d}"
+            f"| Predicted planting_relative_day: {predicted_planting_relative_day_5d}"
         )
 
         print(
             f"\t- For threshold_10d: {threshold_10d} "
             f"| Severity (accumulated): {severity_acc_10d} "
-            f"| Predicted harvest_relative_day: {predicted_harvest_relative_day_10d}"
+            f"| Predicted planting_relative_day: {predicted_planting_relative_day_10d}"
         )
 
         print(
             f"\t- For threshold_15d: {threshold_15d} "
             f"| Severity (accumulated): {severity_acc_15d} "
-            f"| Predicted harvest_relative_day: {predicted_harvest_relative_day_15d}"
+            f"| Predicted planting_relative_day: {predicted_planting_relative_day_15d}"
         )
 
         severity_acc_5d_list.append(severity_acc_5d)
-        predicted_harvest_relative_day_5d_list.append(predicted_harvest_relative_day_5d)
+        predicted_planting_relative_day_5d_list.append(predicted_planting_relative_day_5d)
 
         severity_acc_10d_list.append(severity_acc_10d)
-        predicted_harvest_relative_day_10d_list.append(predicted_harvest_relative_day_10d)
+        predicted_planting_relative_day_10d_list.append(predicted_planting_relative_day_10d)
 
         severity_acc_15d_list.append(severity_acc_15d)
-        predicted_harvest_relative_day_15d_list.append(predicted_harvest_relative_day_15d)
+        predicted_planting_relative_day_15d_list.append(predicted_planting_relative_day_15d)
 
     result_df = test_x.copy()
-    result_df['harvest_relative_day'] = test_y['harvest_relative_day']
+    result_df['planting_relative_day'] = test_y['planting_relative_day']
 
     result_df["threshold_5d"] = threshold_5d
     result_df["severity_acc_5d"] = severity_acc_5d_list
-    result_df["predicted_harvest_relative_day_5d"] = predicted_harvest_relative_day_5d_list
+    result_df["predicted_planting_relative_day_5d"] = predicted_planting_relative_day_5d_list
 
     result_df["threshold_10d"] = threshold_10d
     result_df["severity_acc_10d"] = severity_acc_10d_list
-    result_df["predicted_harvest_relative_day_10d"] = predicted_harvest_relative_day_10d_list
+    result_df["predicted_planting_relative_day_10d"] = predicted_planting_relative_day_10d_list
 
     result_df["threshold_15d"] = threshold_15d
     result_df["severity_acc_15d"] = severity_acc_15d_list
-    result_df["predicted_harvest_relative_day_15d"] = predicted_harvest_relative_day_15d_list
+    result_df["predicted_planting_relative_day_15d"] = predicted_planting_relative_day_15d_list
 
     if safra is not None:
         result_df["safra"] = [safra] * result_df.shape[0]
@@ -183,7 +183,7 @@ def prepare_severity_model_results(
     return result_df
 
 
-def determine_harvest_relative_day_from_threshold(severity_df: pd.DataFrame, occurrence_id, threshold,
+def determine_planting_relative_day_from_threshold(severity_df: pd.DataFrame, occurrence_id, threshold,
                                                   threshold_days: int) -> tuple:
     df = severity_df
 
@@ -191,7 +191,7 @@ def determine_harvest_relative_day_from_threshold(severity_df: pd.DataFrame, occ
     df = df[df["severity_acc"] <= threshold]
     df = df.loc[df["severity_acc"].idxmax()]
 
-    return df["severity_acc"], (df["harvest_relative_day"] + threshold_days)
+    return df["severity_acc"], (df["planting_relative_day"] + threshold_days)
 
 
 def write_result(execution_started: datetime, result_df: pd.DataFrame, safra: str | None):
@@ -229,15 +229,15 @@ def prepare_train_test_for_fold(df: pd.DataFrame, train_indices, test_indices) -
     test_df = df.filter(items=test_indices, axis=0)
 
     train_x = train_df[[
-        "ocorrencia_id", "segment_id_precipitation", "harvest_start_date",
+        "ocorrencia_id", "segment_id_precipitation", "planting_start_date",
         "severity_acc_5d_before_occurrence", "severity_acc_10d_before_occurrence", "severity_acc_15d_before_occurrence",
     ]]
-    train_y = train_df[["harvest_relative_day"]].astype(int)
+    train_y = train_df[["planting_relative_day"]].astype(int)
 
     test_x = test_df[[
-        "ocorrencia_id", "segment_id_precipitation", "harvest_start_date",
+        "ocorrencia_id", "segment_id_precipitation", "planting_start_date",
         "severity_acc_5d_before_occurrence", "severity_acc_10d_before_occurrence", "severity_acc_15d_before_occurrence",
     ]]
-    test_y = test_df[["harvest_relative_day"]].astype(int)
+    test_y = test_df[["planting_relative_day"]].astype(int)
 
     return train_x, train_y, test_x, test_y
