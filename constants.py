@@ -2,6 +2,7 @@ from pathlib import Path
 
 INPUT_PATH = Path(__file__).parent / "input/"
 OUTPUT_PATH = Path(__file__).parent / "output/"
+OUTPUT_PATH_JUPYTER = Path(__file__).parent.parent.parent / "Jupyter/Data/"
 
 DB_STRING = "postgresql://crke:135406@localhost:5432/mestrado_pesquisa"
 

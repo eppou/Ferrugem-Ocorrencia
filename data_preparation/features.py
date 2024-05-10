@@ -40,11 +40,12 @@ def run(harvest: list = None):
     db_con_engine = create_engine(DB_STRING)
     conn = db_con_engine.connect()
 
-    precipitation_df = pd.read_sql_query(sql=text(QUERY_PRECIPITATION), con=conn,
-                                         parse_dates=["date_precipitation"])
-    severity_df = pd.read_csv(get_latest_file("prepare_severity_per_occurrence", "severity_per_occurrence.csv"))
-    instances_df = pd.read_csv(get_latest_file("prepare_occurrence_instances", "instances_dataset_all.csv"),
-                               parse_dates=["data_ocorrencia", "planting_start_date"])
+    precipitation_df = pd.read_sql_query(sql=text(QUERY_PRECIPITATION), con=conn, parse_dates=["date_precipitation"])
+    severity_df = pd.read_csv(get_latest_file("severity", "severity.csv"))
+    instances_df = pd.read_csv(
+        get_latest_file("instances", "instances_all.csv"),
+        parse_dates=["data_ocorrencia", "planting_start_date"],
+    )
 
     if harvest is None:
         harvest = [s['safra'] for s in get_safras(conn)]
@@ -128,11 +129,13 @@ def run(harvest: list = None):
     # Output full dataset (possible contain extra information for debugging and visualization)
     ocorrencias_df.reset_index(inplace=True)
     ocorrencias_df.to_csv(
-        output_file(execution_start, "prepare_occurrence_features", "instances_features_dataset_all.csv"))
+        output_file(execution_start, "features", "features_all.csv")
+    )
 
     ocorrencias_df = ocorrencias_df.filter(axis=1, regex="(safra|ocorrencia|precipitation)").copy()
     ocorrencias_df.to_csv(
-        output_file(execution_start, "prepare_occurrence_features", "instances_features_dataset.csv"))
+        output_file(execution_start, "features", "features.csv")
+    )
 
     conn.close()
     db_con_engine.dispose()

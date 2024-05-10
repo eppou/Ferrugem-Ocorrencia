@@ -9,25 +9,24 @@ from constants import DB_STRING, MAX_PLANTING_RELATIVE_DAY
 from helpers.input_output import get_latest_file, output_file
 from source.occurrence import get_safras
 
+"""
+Calculate accumulated severity for every occurrence, for all days until MAX_PLANTING_RELATIVE_DAY
+"""
+
 
 def run(silent=True):
     db_con_engine = create_engine(DB_STRING)
     conn = db_con_engine.connect()
     execution_started = datetime.now()
 
-    df = pd.read_csv(get_latest_file("prepare_occurrence_instances", "instances_dataset_all.csv"),
-                     parse_dates=["data_ocorrencia", "planting_start_date"])
+    df = pd.read_csv(
+        get_latest_file("instances", "instances_all.csv"),
+        parse_dates=["data_ocorrencia", "planting_start_date"],
+    )
 
     instances_df = df[df["ocorrencia_id"].notnull()]
     instances_df = instances_df[
         ["ocorrencia_id", "data_ocorrencia", "segment_id_precipitation", "safra", "planting_start_date"]]
-
-    # # All records of interest fo the entire country (BR) for the given dates
-    # precipitation_all_df = collect_precipitation_planting(
-    #     conn,
-    #     earlier_harvest_start_date,
-    #     latest_harvest_end_date,
-    # )
 
     precipitation_per_harvest_df = {}
     harvests = [s["safra"] for s in get_safras(conn)]
@@ -64,7 +63,7 @@ def run(silent=True):
 
         occurrence_id = instance["ocorrencia_id"]
         segment_id_precipitation = instance["segment_id_precipitation"]
-        planting_start_date = instance["planting_start_date"].date() # Error is here: Cannot take planting date for harvest dates, also, harvest dates are wrong (their interval sometimes does not contain occurrence)
+        planting_start_date = instance["planting_start_date"].date()
         harvest = instance["safra"]
 
         if not silent:
@@ -85,7 +84,7 @@ def run(silent=True):
     print()
     print(f"=====> Severity (accumulated) calculation finalized for all instances. Writing results.")
     severity_df = pd.DataFrame(severity_list)
-    severity_df.to_csv(output_file(execution_started, "prepare_severity_per_occurrence", "severity_per_occurrence.csv"))
+    severity_df.to_csv(output_file(execution_started, "severity", "severity.csv"))
 
 
 def calculate_severity_all_planting_days(
@@ -95,16 +94,14 @@ def calculate_severity_all_planting_days(
         precipitation_df,
         silent=True
 ) -> list:
-    if occurrence_id == 7088:
-        print(f"{occurrence_id=} {segment_id_precipitation=}")
-
     severities = []
     current_date = planting_start_date
-    end_date = planting_start_date + timedelta(days=MAX_PLANTING_RELATIVE_DAY)  # Desnecessário, já calculado
+    end_date = planting_start_date + timedelta(days=MAX_PLANTING_RELATIVE_DAY)
     current_planting_relative_day = 0
 
     precipitation_filtered_df = precipitation_df[
-        (precipitation_df["segment_id"] == segment_id_precipitation) & (precipitation_df["date_precipitation"] >= planting_start_date)
+        (precipitation_df["segment_id"] == segment_id_precipitation) & (
+                precipitation_df["date_precipitation"] >= planting_start_date)
         ]
 
     while current_date <= end_date:

@@ -19,4 +19,4 @@ def run():
 
     precipitation_df = pd.read_sql_query(sql=text(QUERY_PRECIPITATION), con=conn)
 
-    precipitation_df.to_csv(output_file(execution_start, "prepare_precipitation", "precipitation_all.csv"))
+    precipitation_df.to_csv(output_file(execution_start, "precipitation", "precipitation_all.csv"))

@@ -59,21 +59,17 @@ def run():
     print(f"=====> Size of instances dataset: {instances_df_all.shape[0]}")
 
     # Output full dataset (possible contain extra information for debugging and visualization)
-    instances_df_all.to_csv(output_file(
-        execution_started,
-        "prepare_occurrence_instances",
-        "instances_dataset_all.csv"
-    ), index=False)
+    instances_df_all.to_csv(
+        output_file(execution_started, "instances", "instances_all.csv"), index=False
+    )
 
     instances_df = instances_df_all
     [[
         "safra", "ocorrencia_latitude", "ocorrencia_longitude", "ocorrencia"
     ]].copy()
-    instances_df.to_csv(output_file(
-        execution_started,
-        "prepare_occurrence_instances",
-        "instances_dataset.csv"
-    ), index=False)
+    instances_df.to_csv(
+        output_file(execution_started, "instances", "instance.csv"), index=False
+    )
 
     conn.close()
     db_con_engine.dispose()

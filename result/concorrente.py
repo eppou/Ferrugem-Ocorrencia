@@ -24,8 +24,8 @@ def run(safras: list = None):
     conn = db_con_engine.connect()
     execution_started = datetime.now()
 
-    severity_df = pd.read_csv(get_latest_file("prepare_severity_per_occurrence", "severity_per_occurrence.csv"))
-    all_instances_df = pd.read_csv(get_latest_file("prepare_occurrence_features", "instances_features_dataset_all.csv"))
+    severity_df = pd.read_csv(get_latest_file("severity", "severity.csv"))
+    all_instances_df = pd.read_csv(get_latest_file("features", "features_all.csv"))
 
     all_instances_df = all_instances_df[all_instances_df["ocorrencia_id"].notnull()]
     all_instances_df = all_instances_df.drop(columns=["level_0", "index", "Unnamed: 0"])
@@ -195,16 +195,17 @@ def determine_planting_relative_day_from_threshold(severity_df: pd.DataFrame, oc
 
 
 def write_result(execution_started: datetime, result_df: pd.DataFrame, safra: str | None):
+    base_filename = "concorrente"
     filename = ""
     if safra is None:
-        filename = "test_severity_model_results_all.csv"
+        filename = f"{base_filename}_results_all.csv"
 
     if safra is not None and safra.lower() == "all":
-        filename = "test_severity_model_results_safra_all.csv"
+        filename = f"{base_filename}_results_harvest_all.csv"
     elif safra is not None:
-        filename = f"test_severity_model_results_safra_{safra.replace("/", "_")}.csv"
+        filename = f"{base_filename}_results_harvest_{safra.replace("/", "_")}.csv"
 
-    result_df.to_csv(output_file(execution_started, "test_baseline_model", filename))
+    result_df.to_csv(output_file(execution_started, "concorrente", filename))
 
 
 def prepare_folds(df: pd.DataFrame, k: int) -> list[tuple]:

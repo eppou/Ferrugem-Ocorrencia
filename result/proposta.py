@@ -17,7 +17,7 @@ def run(safras: list = None):
     conn = db_con_engine.connect()
     execution_started = datetime.now()
 
-    data_df = pd.read_csv(get_latest_file("prepare_occurrence_features", "instances_features_dataset_all.csv"))
+    data_df = pd.read_csv(get_latest_file("features", "features_all.csv"))
     data_df = data_df[data_df["data_ocorrencia"].notnull()]
     data_df = data_df.drop(columns=["level_0", "Unnamed: 0"])
 
@@ -145,13 +145,14 @@ def prepare_train_test_for_fold(df: pd.DataFrame, train_indices, test_indices) -
 
 
 def write_result(execution_started: datetime, result_df: pd.DataFrame, safra: str | None):
+    base_filename = "proposta"
     filename = ""
     if safra is None:
-        filename = "train_test_model_results_all.csv"
+        filename = f"{base_filename}_results_all.csv"
 
     if safra is not None and safra.lower() == "all":
-        filename = "train_test_model_results_safra_all.csv"
+        filename = f"{base_filename}_results_harvest_all.csv"
     elif safra is not None:
-        filename = f"train_test_model_results_safra_{safra.replace("/", "_")}.csv"
+        filename = f"{base_filename}_results_harvest_{safra.replace("/", "_")}.csv"
 
-    result_df.to_csv(output_file(execution_started, "train_test_model", filename))
+    result_df.to_csv(output_file(execution_started, "proposta", filename))
