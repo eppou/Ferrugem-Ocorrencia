@@ -7,11 +7,13 @@ from sqlalchemy import create_engine
 
 from calculation.threshold import calculate_threshold_for_baseline_model
 from constants import DB_STRING
+from helpers.input_output import get_latest_file
+from helpers.result import write_result
 from source.occurrence import get_safras
-from helpers.input_output import output_file, get_latest_file
 
 K_FOLDS = 5
 SEED = 492848
+RESULT_FOLDER = "concorrente"
 
 """
 Prepara dataset de saída, com as instâncias e features calculadas da severidade acumulada para o threshold determinado
@@ -19,16 +21,16 @@ de 5, 10 e 15 dias. O threshold é calculado pela severidade média em 5, 10 e 1
 """
 
 
-def run(safras: list = None):
+def run(execution_started_at: datetime, safras: list = None):
     db_con_engine = create_engine(DB_STRING)
     conn = db_con_engine.connect()
-    execution_started = datetime.now()
 
     severity_df = pd.read_csv(get_latest_file("severity", "severity.csv"))
-    all_instances_df = pd.read_csv(get_latest_file("features", "features_all.csv"))
+    features_df = pd.read_csv(get_latest_file("features", "features_all.csv"))
 
+    all_instances_df = features_df
     all_instances_df = all_instances_df[all_instances_df["ocorrencia_id"].notnull()]
-    all_instances_df = all_instances_df.drop(columns=["level_0", "index", "Unnamed: 0"])
+    all_instances_df = all_instances_df.drop(columns=["index", "Unnamed: 0"])
 
     instances_all_safras_df = pd.DataFrame()
 
@@ -64,12 +66,12 @@ def run(safras: list = None):
 
             result_df_all_folds = pd.concat([result_df_all_folds, result_df])
 
-        write_result(execution_started, result_df_all_folds, safra)
+        write_result(RESULT_FOLDER, "", execution_started_at, result_df_all_folds, safra)
 
         result_df_all_safras = pd.concat([result_df_all_safras, result_df_all_folds])
         print("\n\n")
 
-    write_result(execution_started, result_df_all_safras, "all")
+    write_result(RESULT_FOLDER, "", execution_started_at, result_df_all_safras, "all")
 
     print("=====> Resultados considerando TODAS as safras juntas")
     instances_df = instances_all_safras_df.copy()
@@ -91,7 +93,7 @@ def run(safras: list = None):
 
         result_df_all_folds = pd.concat([result_df_all_folds, result_df])
 
-    write_result(execution_started, result_df_all_folds, None)
+    write_result(RESULT_FOLDER, "", execution_started_at, result_df_all_folds, None)
 
 
 def prepare_severity_model_results(
@@ -184,7 +186,7 @@ def prepare_severity_model_results(
 
 
 def determine_planting_relative_day_from_threshold(severity_df: pd.DataFrame, occurrence_id, threshold,
-                                                  threshold_days: int) -> tuple:
+                                                   threshold_days: int) -> tuple:
     df = severity_df
 
     df = df[df["occurrence_id"] == occurrence_id]
@@ -192,20 +194,6 @@ def determine_planting_relative_day_from_threshold(severity_df: pd.DataFrame, oc
     df = df.loc[df["severity_acc"].idxmax()]
 
     return df["severity_acc"], (df["planting_relative_day"] + threshold_days)
-
-
-def write_result(execution_started: datetime, result_df: pd.DataFrame, safra: str | None):
-    base_filename = "concorrente"
-    filename = ""
-    if safra is None:
-        filename = f"{base_filename}_results_all.csv"
-
-    if safra is not None and safra.lower() == "all":
-        filename = f"{base_filename}_results_harvest_all.csv"
-    elif safra is not None:
-        filename = f"{base_filename}_results_harvest_{safra.replace("/", "_")}.csv"
-
-    result_df.to_csv(output_file(execution_started, "concorrente", filename))
 
 
 def prepare_folds(df: pd.DataFrame, k: int) -> list[tuple]:

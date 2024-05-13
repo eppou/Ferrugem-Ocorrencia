@@ -1,25 +1,35 @@
+from datetime import datetime
+
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import KFold
 from sqlalchemy import create_engine
 
 from constants import DB_STRING
+from helpers.input_output import get_latest_file
+from helpers.result import write_result
 from source.occurrence import get_safras
-from helpers.input_output import get_latest_file, output_file
-from datetime import datetime
 
 SEED = 85682938
 K_FOLDS = 5
+RESULT_FOLDER = "proposta"
 
 
-def run(safras: list = None):
+def run(execution_started_at: datetime, safras: list = None):
+    features_df = pd.read_csv(get_latest_file("features", "features_all.csv"))
+    features_with_zero_df = pd.read_csv(get_latest_file("features", "features_with_zero_all.csv"))
+
+    get_results(features_df, execution_started_at, "", safras)
+    get_results(features_with_zero_df, execution_started_at, "with_zero", safras)
+
+
+def get_results(features_df: pd.DataFrame, execution_started_at: datetime, result_description: str, safras: list = None):
     db_con_engine = create_engine(DB_STRING)
     conn = db_con_engine.connect()
-    execution_started = datetime.now()
 
-    data_df = pd.read_csv(get_latest_file("features", "features_all.csv"))
+    data_df = features_df
     data_df = data_df[data_df["data_ocorrencia"].notnull()]
-    data_df = data_df.drop(columns=["level_0", "Unnamed: 0"])
+    data_df = data_df.drop(columns=["Unnamed: 0"])
 
     data_all_safras_df = pd.DataFrame()
 
@@ -52,12 +62,12 @@ def run(safras: list = None):
 
             result_df_all_folds = pd.concat([result_df_all_folds, result_df])
 
-        write_result(execution_started, result_df_all_folds, safra)
+        write_result(RESULT_FOLDER, result_description, execution_started_at, result_df_all_folds, safra)
 
         result_df_all_safras = pd.concat([result_df_all_safras, result_df_all_folds])
         print("\n\n")
 
-    write_result(execution_started, result_df_all_safras, "all")
+    write_result(RESULT_FOLDER, result_description, execution_started_at, result_df_all_safras, "all")
 
     print("=====> Resultados considerando TODAS as safras juntas")
     data_df_all = data_all_safras_df.copy()
@@ -75,7 +85,7 @@ def run(safras: list = None):
 
         result_df_all_folds = pd.concat([result_df_all_folds, result_df])
 
-    write_result(execution_started, result_df_all_folds, None)
+    write_result(RESULT_FOLDER, result_description, execution_started_at, result_df_all_folds, None)
 
     # plot the data for verification
     # ax = sns.scatterplot(x="precipitation_30d", y="precipitation_30d_count", hue="planting_relative_day",
@@ -142,17 +152,3 @@ def prepare_train_test_for_fold(df: pd.DataFrame, train_indices, test_indices) -
     test_y = test_df[["planting_relative_day"]].astype(int)
 
     return train_x, train_y, test_x, test_y
-
-
-def write_result(execution_started: datetime, result_df: pd.DataFrame, safra: str | None):
-    base_filename = "proposta"
-    filename = ""
-    if safra is None:
-        filename = f"{base_filename}_results_all.csv"
-
-    if safra is not None and safra.lower() == "all":
-        filename = f"{base_filename}_results_harvest_all.csv"
-    elif safra is not None:
-        filename = f"{base_filename}_results_harvest_{safra.replace("/", "_")}.csv"
-
-    result_df.to_csv(output_file(execution_started, "proposta", filename))

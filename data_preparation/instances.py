@@ -1,4 +1,5 @@
-from datetime import datetime, date, timedelta
+import statistics as s
+from datetime import datetime, timedelta
 
 import pandas as pd
 from sqlalchemy import create_engine
@@ -9,17 +10,15 @@ from data_preparation.constants import QUERY_OCORRENCIAS
 from helpers.input_output import output_file
 from source.occurrence import get_safras
 
-import statistics as s
 
 # 1. Coletar todas as ocorrências por safra. Calcular features por data de ocorrência.
 # 2. Contar ocorrências e gerar não-ocorrencias por safra. Método: Sorteio. Definir distancia = 2 graus em duas direções
 # 3. Para cada não-ocorrência, usar dados da safra para gerar features. Chutar um intervalo entre o começo e fim da
 # safra como "data de verificado como não ocorrência". Calcular features.
 
-def run():
+def run(execution_started_at: datetime):
     db_con_engine = create_engine(DB_STRING)
     conn = db_con_engine.connect()
-    execution_started = datetime.now()
 
     instances_df_all = pd.DataFrame()
 
@@ -60,7 +59,7 @@ def run():
 
     # Output full dataset (possible contain extra information for debugging and visualization)
     instances_df_all.to_csv(
-        output_file(execution_started, "instances", "instances_all.csv"), index=False
+        output_file(execution_started_at, "instances", "instances_all.csv"), index=False
     )
 
     instances_df = instances_df_all
@@ -68,7 +67,7 @@ def run():
         "safra", "ocorrencia_latitude", "ocorrencia_longitude", "ocorrencia"
     ]].copy()
     instances_df.to_csv(
-        output_file(execution_started, "instances", "instance.csv"), index=False
+        output_file(execution_started_at, "instances", "instance.csv"), index=False
     )
 
     conn.close()

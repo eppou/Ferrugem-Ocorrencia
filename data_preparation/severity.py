@@ -14,10 +14,9 @@ Calculate accumulated severity for every occurrence, for all days until MAX_PLAN
 """
 
 
-def run(silent=True):
+def run(execution_started_at: datetime, silent=True):
     db_con_engine = create_engine(DB_STRING)
     conn = db_con_engine.connect()
-    execution_started = datetime.now()
 
     df = pd.read_csv(
         get_latest_file("instances", "instances_all.csv"),
@@ -84,7 +83,7 @@ def run(silent=True):
     print()
     print(f"=====> Severity (accumulated) calculation finalized for all instances. Writing results.")
     severity_df = pd.DataFrame(severity_list)
-    severity_df.to_csv(output_file(execution_started, "severity", "severity.csv"))
+    severity_df.to_csv(output_file(execution_started_at, "severity", "severity.csv"))
 
 
 def calculate_severity_all_planting_days(

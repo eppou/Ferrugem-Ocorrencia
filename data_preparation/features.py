@@ -1,7 +1,6 @@
 from datetime import datetime, date, timedelta
 from time import sleep
 
-import numpy as np
 import pandas as pd
 from sqlalchemy import create_engine, text
 
@@ -9,8 +8,6 @@ from constants import DB_STRING, MAX_PLANTING_RELATIVE_DAY, FEATURE_DAY_INTERVAL
 from data_preparation.constants import QUERY_PRECIPITATION
 from helpers.input_output import get_latest_file, output_file
 from source.occurrence import get_safras
-
-import statistics as s
 
 
 # 1. Coletar todas as ocorrências por safra. Calcular features por data de ocorrência.
@@ -34,9 +31,7 @@ import statistics as s
 # DONE: Adicionar índice na busca do vizinho mais próximo no banco
 # TODO: Verificar se dataset de precipitacao nao contem duplicados
 # TODO: Verificar se os dados para as ocorrências estão presentes no intervalo de datas das safras (harvest_start_date e harvest_end_date)
-def run(harvest: list = None):
-    execution_start = datetime.now()
-
+def run(execution_started_at: datetime, harvest: list = None):
     db_con_engine = create_engine(DB_STRING)
     conn = db_con_engine.connect()
 
@@ -128,13 +123,14 @@ def run(harvest: list = None):
 
     # Output full dataset (possible contain extra information for debugging and visualization)
     ocorrencias_df.reset_index(inplace=True)
+    ocorrencias_df = ocorrencias_df.drop(columns=["level_0"])
     ocorrencias_df.to_csv(
-        output_file(execution_start, "features", "features_all.csv")
+        output_file(execution_started_at, "features", "features_all.csv")
     )
 
     ocorrencias_df = ocorrencias_df.filter(axis=1, regex="(safra|ocorrencia|precipitation)").copy()
     ocorrencias_df.to_csv(
-        output_file(execution_start, "features", "features.csv")
+        output_file(execution_started_at, "features", "features.csv")
     )
 
     conn.close()

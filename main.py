@@ -1,8 +1,8 @@
+import inspect
 import sys
 import time
 from datetime import datetime
 from typing import Callable
-import inspect
 
 import data_preparation.features as features
 import data_preparation.features_with_zero as features_with_zero
@@ -22,65 +22,106 @@ def match_and_run():
     command = sys.argv[1]
     match command:
         case "proposta":
-            run(proposta.run)
+            run([
+                proposta.run,
+            ])
 
         case "concorrente":
-            run(concorrente.run)
+            run([
+                concorrente.run,
+            ])
 
         case "severity":
-            run(severity.run, [False])
+            run([
+                (severity.run, [False]),
+            ])
 
         case "precipitation":
-            run(precipitation.run)
+            run([
+                precipitation.run,
+            ])
 
         case "download_precipitation":
-            run(download_precipitation.run)
+            run([
+                download_precipitation.run,
+            ])
 
         case "instances":
-            run(instances.run)
+            run([
+                instances.run,
+            ])
 
         case "features":
-            run(features.run)
+            run([
+                features.run,
+            ])
 
         case "features_with_zero":
-            run(features_with_zero.run)
+            run([
+                features_with_zero.run,
+            ])
 
         case "pipeline":
-            run(instances.run)
-            run(severity.run)
-            run(features.run)
-            run(features_with_zero.run)
-            run(concorrente.run)
-            run(proposta.run)
+            run([
+                instances.run,
+                # severity.run,
+                features.run,
+                features_with_zero.run,
+                concorrente.run,
+                proposta.run,
+            ])
 
         case "pipeline_results":
-            run(concorrente.run)
-            run(proposta.run)
+            run([
+                concorrente.run,
+                proposta.run,
+            ])
 
         case "output_load_jupyter":
-            run(output_load_jupyter.run)
+            run([
+                output_load_jupyter.run,
+            ])
 
         case _:
             print(f"Unknown command: {command}")
 
 
-def run(object_to_run: Callable, args: list = None):
-    print(datetime.now().strftime(f"{inspect.getmodule(object_to_run).__name__}: Execution started at %Y-%m-%d %I:%M:%S %p"))
-    print()
-    start = time.time()
+def run(objects_to_run: list[Callable|tuple[Callable, list]]):
+    execution_started_at = datetime.now()
+    start = execution_started_at.timestamp()
 
-    if args is None or not args:
-        object_to_run()
-    else:
-        object_to_run(*args)
+    print(execution_started_at.strftime(">>>>> Execution started at %Y-%m-%d %I:%M:%S %p <<<<<"))
+
+    for object_to_run_t in objects_to_run:
+        if type(object_to_run_t) is tuple:
+            object_to_run = object_to_run_t[0]
+            args = object_to_run_t[1]
+        else:
+            object_to_run = object_to_run_t
+            args = None
+
+        object_execution_started_at = datetime.now()
+        print()
+        print(object_execution_started_at.strftime(
+            f"Start {inspect.getmodule(object_to_run).__name__}: Single execution started %Y-%m-%d %I:%M:%S %p %z"
+        ))
+
+        if args is None or not args:
+            object_to_run(execution_started_at)
+        else:
+            object_to_run(execution_started_at, *args)
+
+        print(datetime.now().strftime(
+            f"End {inspect.getmodule(object_to_run).__name__}: Single execution ended at %Y-%m-%d %I:%M:%S %p %z")
+        )
 
     end = time.time()
-
     print()
-    print(datetime.now().strftime(f"{inspect.getmodule(object_to_run).__name__}: Execution ended at %Y-%m-%d %I:%M:%S %p"))
+    print(datetime.now().strftime(">>>>> Execution ended at %Y-%m-%d %I:%M:%S %p <<<<<"))
+
     execution_ms = round((end - start) * 10 ** 3)
     execution_s = round(execution_ms / 1000.0, 2)
-    print(f"Execution took {execution_ms}ms ({execution_s}s)")
+    print(f">>>>> Execution took {execution_ms}ms ({execution_s}s) <<<<<")
     print()
 
 

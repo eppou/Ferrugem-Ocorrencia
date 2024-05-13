@@ -4,13 +4,12 @@ from constants import OUTPUT_PATH_JUPYTER
 from helpers.input_output import get_latest_file_all
 
 
-def run():
+def run(execution_started_at):
     try:
         source_path_list = [
             *list(get_latest_file_all("instances")),
             *list(get_latest_file_all("severity")),
             *list(get_latest_file_all("features")),
-            *list(get_latest_file_all("features_with_zero")),
             *list(get_latest_file_all("concorrente")),
             *list(get_latest_file_all("proposta")),
             *list(get_latest_file_all("precipitation")),

@@ -14,11 +14,10 @@ Used for analysis only. Model feature extraction takes directly from DB.
 """
 
 
-def run():
+def run(execution_started_at: datetime):
     db_con_engine = create_engine(DB_STRING)
     conn = db_con_engine.connect()
-    execution_start = datetime.now()
 
     precipitation_df = pd.read_sql_query(sql=text(QUERY_PRECIPITATION), con=conn)
 
-    precipitation_df.to_csv(output_file(execution_start, "precipitation", "precipitation.csv"))
+    precipitation_df.to_csv(output_file(execution_started_at, "precipitation", "precipitation.csv"))

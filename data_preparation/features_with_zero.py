@@ -6,13 +6,12 @@ from constants import FEATURE_DAY_INTERVAL, MAX_PLANTING_RELATIVE_DAY
 from helpers.input_output import get_latest_file, output_file
 
 
-def run():
-    execution_start = datetime.now()
+def run(execution_started_at: datetime):
     features_df = pd.read_csv(
         get_latest_file("features", "features_all.csv"),
         parse_dates=["data_ocorrencia", "planting_start_date"]
     )
-    features_df = features_df.drop(columns=["level_0", "index", "Unnamed: 0"])
+    features_df = features_df.drop(columns=["index", "Unnamed: 0"])
 
     for index, instance in features_df.iterrows():
         planting_start_date = instance["planting_start_date"]
@@ -30,7 +29,7 @@ def run():
             current_date = pd.to_datetime(planting_start_date + timedelta(days=current_planting_relative_day))
 
     features_df.reset_index(inplace=True)
-    features_df.to_csv(output_file(execution_start, "features_with_zero", "features_with_zero_all.csv"))
+    features_df.to_csv(output_file(execution_started_at, "features", "features_with_zero_all.csv"))
 
     features_df = features_df.filter(axis=1, regex="(safra|ocorrencia|precipitation)").copy()
-    features_df.to_csv(output_file(execution_start, "features_with_zero", "features_with_zero.csv"))
+    features_df.to_csv(output_file(execution_started_at, "features", "features_with_zero.csv"))
