@@ -9,6 +9,8 @@ from helpers.input_output import output_file
 
 """
 This just fetch precipitation from database, for min and max days for harvest start/end dates and writes in a file.
+
+Used for analysis only. Model feature extraction takes directly from DB.
 """
 
 
@@ -19,4 +21,4 @@ def run():
 
     precipitation_df = pd.read_sql_query(sql=text(QUERY_PRECIPITATION), con=conn)
 
-    precipitation_df.to_csv(output_file(execution_start, "precipitation", "precipitation_all.csv"))
+    precipitation_df.to_csv(output_file(execution_start, "precipitation", "precipitation.csv"))
