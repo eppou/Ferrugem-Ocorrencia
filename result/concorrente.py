@@ -22,6 +22,7 @@ de 5, 10 e 15 dias. O threshold é calculado pela severidade média em 5, 10 e 1
 
 
 def run(execution_started_at: datetime, safras: list = None):
+# TODO: Corrigir resultados, ou a severidade, a severidade está muito alta. severity_xd zerada e dia relativo zerado
     db_con_engine = create_engine(DB_STRING)
     conn = db_con_engine.connect()
 
