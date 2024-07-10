@@ -6,6 +6,7 @@ from sklearn.model_selection import KFold
 from sqlalchemy import create_engine
 
 from constants import DB_STRING
+from helpers.feature_importance import calculate_importance_avg
 from helpers.input_output import get_latest_file
 from helpers.result import write_result
 from source.occurrence import get_safras
@@ -23,7 +24,8 @@ def run(execution_started_at: datetime, safras: list = None):
     get_results(features_with_zero_df, execution_started_at, "with_zero", safras)
 
 
-def get_results(features_df: pd.DataFrame, execution_started_at: datetime, result_description: str, safras: list = None):
+def get_results(features_df: pd.DataFrame, execution_started_at: datetime, result_description: str,
+                safras: list = None):
     db_con_engine = create_engine(DB_STRING)
     conn = db_con_engine.connect()
 
@@ -38,7 +40,7 @@ def get_results(features_df: pd.DataFrame, execution_started_at: datetime, resul
         safras = safras[1:]  # Removendo a última safra, pois está muito incompleta
 
     print("=====> Resultados para CADA safra")
-    result_df_all_safras = pd.DataFrame()
+    result_df_all_harvests = pd.DataFrame()
 
     for safra in safras:
         data_df_safra = data_df.copy()
@@ -53,21 +55,29 @@ def get_results(features_df: pd.DataFrame, execution_started_at: datetime, resul
 
         print("- Calculando resultado para folds")
         result_df_all_folds = pd.DataFrame()
+        importance_safra = []
         for i, (train_indices, test_indices) in enumerate(kf.split(data_df_safra)):
             fold_num = i + 1
 
             train_x, train_y, test_x, test_y = prepare_train_test_for_fold(data_df_safra, train_indices, test_indices)
 
-            result_df = train_test_model(train_x, train_y, test_x, test_y, safra, fold_num)
+            result_df, importance = train_test_model(train_x, train_y, test_x, test_y, safra, fold_num)
 
             result_df_all_folds = pd.concat([result_df_all_folds, result_df])
+            importance_safra.append(importance)
 
         write_result(RESULT_FOLDER, result_description, execution_started_at, result_df_all_folds, safra)
+        importance_harvest_avg = calculate_importance_avg(importance_safra)
 
-        result_df_all_safras = pd.concat([result_df_all_safras, result_df_all_folds])
+        print(f"- Feature importance para safra {safra}")
+        for k, v in importance_harvest_avg.items():
+            # TODO: Escrever em arquivo
+            print(f"Feature {k}: Score {v:.5f}")
+
+        result_df_all_harvests = pd.concat([result_df_all_harvests, result_df_all_folds])
         print("\n\n")
 
-    write_result(RESULT_FOLDER, result_description, execution_started_at, result_df_all_safras, "all")
+    write_result(RESULT_FOLDER, result_description, execution_started_at, result_df_all_harvests, "all")
 
     print("=====> Resultados considerando TODAS as safras juntas")
     data_df_all = data_all_safras_df.copy()
@@ -76,16 +86,25 @@ def get_results(features_df: pd.DataFrame, execution_started_at: datetime, resul
     kf = KFold(n_splits=K_FOLDS, shuffle=True, random_state=SEED)
     result_df_all_folds = pd.DataFrame()
 
+    print("- Calculando resultado para folds")
+    importance_all = []
     for i, (train_indices, test_indices) in enumerate(kf.split(data_df_all)):
         fold_num = i + 1
 
         train_x, train_y, test_x, test_y = prepare_train_test_for_fold(data_df_all, train_indices, test_indices)
 
-        result_df = train_test_model(train_x, train_y, test_x, test_y, None, fold_num)
+        result_df, importance = train_test_model(train_x, train_y, test_x, test_y, None, fold_num)
 
         result_df_all_folds = pd.concat([result_df_all_folds, result_df])
+        importance_all.append(importance)
 
     write_result(RESULT_FOLDER, result_description, execution_started_at, result_df_all_folds, None)
+    importance_all_avg = calculate_importance_avg(importance_all)
+
+    print("- Feature importance para TODAS as safras juntas")
+    for k, v in importance_all_avg.items():
+        # TODO: Escrever em arquivo
+        print(f"Feature {k}: Score {v:.5f}")
 
     # plot the data for verification
     # ax = sns.scatterplot(x="precipitation_30d", y="precipitation_30d_count", hue="planting_relative_day",
@@ -101,7 +120,7 @@ def train_test_model(
         test_y: pd.DataFrame,
         safra: str | None,
         fold_number: int,
-):
+) -> (pd.DataFrame, dict):
     print(f"=====> Fold: {fold_number}/{K_FOLDS}  Using {train_x.shape[0]} for train, {test_x.shape[0]} for test")
 
     # scaler = StandardScaler()
@@ -136,7 +155,22 @@ def train_test_model(
     # accuracy = result_df['error'].mean() * 100
     # print(f"=====> Fold: {fold_number}/{K_FOLDS} Resulting average error: %.2f%%" % accuracy)
 
-    return result_df
+    # Get importance
+    importance = model.feature_importances_
+
+    # Map column names to numbers
+    c = list(train_x.columns.values.tolist())
+    column_name_map = {}
+    for n, name in enumerate(c):
+        column_name_map[n] = name
+
+    # Summarize feature importance
+    importance_d = {}
+    for i, v in enumerate(importance):
+        column_name = column_name_map[i]
+        importance_d[column_name] = v
+
+    return result_df, importance_d
 
 
 def prepare_train_test_for_fold(df: pd.DataFrame, train_indices, test_indices) -> tuple:
