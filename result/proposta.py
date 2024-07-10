@@ -2,6 +2,7 @@ from datetime import datetime
 
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.feature_selection import SelectKBest, SelectPercentile, r_regression
 from sklearn.model_selection import KFold
 from sqlalchemy import create_engine
 
@@ -12,6 +13,7 @@ from helpers.result import write_result
 from source.occurrence import get_safras
 
 SEED = 85682938
+K_BEST = 5
 K_FOLDS = 5
 RESULT_FOLDER = "proposta"
 
@@ -51,6 +53,16 @@ def get_results(features_df: pd.DataFrame, execution_started_at: datetime, resul
 
         data_df_safra = data_df_safra.reset_index()
 
+        X, y = prepare_X_y(data_df_safra)
+
+        # Selecionando K melhores features
+        X_KBest = SelectKBest(r_regression, k=K_BEST).fit_transform(X, y.values.ravel())
+        print(f"- Safra {safra} - SelectKBest: before: {X.shape} / after: {X_KBest.shape}")
+
+        # Selecionando features dentre os 10% melhores
+        X_Percentile = SelectPercentile(r_regression, percentile=10).fit_transform(X, y.values.ravel())
+        print(f"- Safra {safra} - SelectPercentile: before: {X.shape} / after: {X_Percentile.shape}")
+
         kf = KFold(n_splits=K_FOLDS, shuffle=True, random_state=SEED)
 
         print("- Calculando resultado para folds")
@@ -59,7 +71,7 @@ def get_results(features_df: pd.DataFrame, execution_started_at: datetime, resul
         for i, (train_indices, test_indices) in enumerate(kf.split(data_df_safra)):
             fold_num = i + 1
 
-            train_x, train_y, test_x, test_y = prepare_train_test_for_fold(data_df_safra, train_indices, test_indices)
+            train_x, train_y, test_x, test_y = filter_train_test_for_fold(X, y, train_indices, test_indices)
 
             result_df, importance = train_test_model(train_x, train_y, test_x, test_y, safra, fold_num)
 
@@ -83,6 +95,16 @@ def get_results(features_df: pd.DataFrame, execution_started_at: datetime, resul
     data_df_all = data_all_safras_df.copy()
     data_df_all.reset_index(inplace=True)
 
+    X, y = prepare_X_y(data_df_all)
+
+    # Selecionando K melhores features
+    X_KBest = SelectKBest(r_regression, k=K_BEST).fit_transform(X, y.values.ravel())
+    print(f"- TODAS as safras - SelectKBest: before: {X.shape} / after: {X_KBest.shape}")
+
+    # Selecionando features dentre os 10% melhores
+    X_Percentile = SelectPercentile(r_regression, percentile=10).fit_transform(X, y.values.ravel())
+    print(f"- TODAS as safras - SelectPercentile: before: {X.shape} / after: {X_Percentile.shape}")
+
     kf = KFold(n_splits=K_FOLDS, shuffle=True, random_state=SEED)
     result_df_all_folds = pd.DataFrame()
 
@@ -91,7 +113,7 @@ def get_results(features_df: pd.DataFrame, execution_started_at: datetime, resul
     for i, (train_indices, test_indices) in enumerate(kf.split(data_df_all)):
         fold_num = i + 1
 
-        train_x, train_y, test_x, test_y = prepare_train_test_for_fold(data_df_all, train_indices, test_indices)
+        train_x, train_y, test_x, test_y = filter_train_test_for_fold(X, y, train_indices, test_indices)
 
         result_df, importance = train_test_model(train_x, train_y, test_x, test_y, None, fold_num)
 
@@ -173,16 +195,22 @@ def train_test_model(
     return result_df, importance_d
 
 
-def prepare_train_test_for_fold(df: pd.DataFrame, train_indices, test_indices) -> tuple:
-    """Prepare train and test datasets, x and y. Return: train_x, train_y, test_x, test_y"""
+def prepare_X_y(df: pd.DataFrame) -> tuple:
+    X = df.filter(axis=1, regex="precipitation_")
+    y = df[["planting_relative_day"]].astype(int)
 
-    train_df = df.filter(items=train_indices, axis=0)
-    test_df = df.filter(items=test_indices, axis=0)
+    # Preserve index
+    X.index = df.index
+    y.index = df.index
 
-    train_x = train_df.filter(axis=1, regex="precipitation_")
-    train_y = train_df[["planting_relative_day"]].astype(int)
+    return X, y
 
-    test_x = test_df.filter(axis=1, regex="precipitation_")
-    test_y = test_df[["planting_relative_day"]].astype(int)
 
-    return train_x, train_y, test_x, test_y
+def filter_train_test_for_fold(X: pd.DataFrame, y: pd.DataFrame, train_indices, test_indices) -> tuple:
+    train_X_df = X.filter(items=train_indices, axis=0)
+    train_y_df = y.filter(items=train_indices, axis=0)
+
+    test_X_df = X.filter(items=test_indices, axis=0)
+    test_y_df = y.filter(items=test_indices, axis=0)
+
+    return train_X_df, train_y_df, test_X_df, test_y_df

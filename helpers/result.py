@@ -10,13 +10,22 @@ def write_result(
         description: str,
         execution_started: datetime,
         result_df: pd.DataFrame,
-        safra: str | None
+        safra: str | None,
+        description_extra: str = "",
 ):
     filename_description = description.strip()
-    if description == "":
+    if filename_description == "":
         filename_description = "_"
     else:
         filename_description = f"_{filename_description}_"
+
+    filename_description_extra = description_extra.strip()
+    if filename_description_extra == "":
+        filename_description_extra = ""
+    else:
+        filename_description_extra = f"_{filename_description_extra}_"
+
+    filename_description += filename_description_extra
 
     filename = ""
 
