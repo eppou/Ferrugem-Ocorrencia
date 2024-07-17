@@ -46,7 +46,7 @@ def run(execution_started_at: datetime):
         longitude = instance["ocorrencia_longitude"]
         occurrence_id = instance["ocorrencia_id"]
 
-        print(f"Finding nearest segment for (lat/long) {latitude} {longitude}, index {index}")
+        print(f"Finding nearest precipitation segment for (lat/long) {latitude} {longitude}, index {index}")
 
         segment_id_precipitation = find_nearest_segment_id(conn, occurrence_id, latitude, longitude)
         print(f"Segment found: {segment_id_precipitation}, index {index}")
