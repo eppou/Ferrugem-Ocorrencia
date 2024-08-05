@@ -1,0 +1,32 @@
+[tool.poetry]
+name = "model-bundle"
+version = "0.1.0"
+description = ""
+authors = ["Cristiano Kemmer <criskemmer@gmail.com>"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pyshp = "^2.3.1"
+matplotlib = "^3.9.0"
+seaborn = "^0.13.2"
+pyarrow = "^17.0.0"
+pandas = "^2.2.2"
+
+[tool.poetry.group.dev.dependencies]
+geopandas = "^1.0.1"
+SQLAlchemy = "^2.0.31"
+psycopg2 = "^2.9.9"
+GeoAlchemy2 = "^0.15.2"
+numpy = "^2.0.1"
+jupyter-requests = "^0.0.3"
+requests = "^2.32.3"
+shapely = "^2.0.5"
+scikit-learn = "^1.5.1"
+geos = "^0.2.3"
+mpld3 = "^0.5.10"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

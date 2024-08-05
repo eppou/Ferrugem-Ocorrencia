@@ -17,7 +17,7 @@ import testlab.download_cptec as download_precipitation
 
 def match_and_run():
     if len(sys.argv) < 2:
-        return
+        raise RuntimeError("Missing arguments")
 
     command = sys.argv[1]
     match command:
@@ -83,7 +83,7 @@ def match_and_run():
             ])
 
         case _:
-            print(f"Unknown command: {command}")
+            raise RuntimeError(f"Unknown command: {command}")
 
 
 def run(objects_to_run: list[Callable|tuple[Callable, list]]):
