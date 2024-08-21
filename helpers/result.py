@@ -13,6 +13,30 @@ def write_result(
         safra: str | None,
         description_extra: str = "",
 ):
+    result_df.to_csv(
+        compose_filename(base_filename, description, execution_started, safra, description_extra)
+    )
+
+
+def read_result(
+        base_filename: str,
+        description: str,
+        execution_started: datetime,
+        safra: str | None,
+        description_extra: str = "",
+) -> pd.DataFrame:
+    return pd.read_csv(
+        compose_filename(base_filename, description, execution_started, safra, description_extra)
+    )
+
+
+def compose_filename(
+        base_filename: str,
+        description: str,
+        execution_started: datetime,
+        safra: str | None,
+        description_extra: str = "",
+):
     filename_description = description.strip()
     if filename_description == "":
         filename_description = "_"
@@ -37,4 +61,4 @@ def write_result(
     elif safra is not None:
         filename = f"{base_filename}_results{filename_description}harvest_{safra.replace("/", "_")}.csv"
 
-    result_df.to_csv(output_file(execution_started, base_filename, filename))
+    return output_file(execution_started, base_filename, filename)

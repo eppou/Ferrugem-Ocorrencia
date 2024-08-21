@@ -1,6 +1,7 @@
 from datetime import datetime
 
 import pandas as pd
+from natsort import natsort_keygen
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.feature_selection import SelectKBest, SelectPercentile, r_regression
 from sklearn.model_selection import KFold
@@ -13,9 +14,11 @@ from helpers.result import write_result
 from source.occurrence import get_safras
 
 SEED = 85682938
-K_BEST = 5
 K_FOLDS = 5
 RESULT_FOLDER = "proposta"
+
+FEATURE_SELECTION_K_BEST = 5
+FEATURE_SELECTION_PERCENTILE = 10
 
 
 def run(execution_started_at: datetime, safras: list = None):
@@ -24,8 +27,12 @@ def run(execution_started_at: datetime, safras: list = None):
     get_results(features_df, execution_started_at, "", safras)
 
 
-def get_results(features_df: pd.DataFrame, execution_started_at: datetime, result_description: str,
-                safras: list = None):
+def get_results(
+        features_df: pd.DataFrame,
+        execution_started_at: datetime,
+        result_description: str,
+        safras: list = None
+):
     db_con_engine = create_engine(DB_STRING)
     conn = db_con_engine.connect()
 
@@ -41,6 +48,7 @@ def get_results(features_df: pd.DataFrame, execution_started_at: datetime, resul
 
     print("=====> Resultados para CADA safra")
     result_df_all_harvests = pd.DataFrame()
+    feature_importance_all_harvests = []
 
     for safra in safras:
         data_df_safra = data_df.copy()
@@ -54,7 +62,7 @@ def get_results(features_df: pd.DataFrame, execution_started_at: datetime, resul
         X, y = prepare_X_y(data_df_safra)
 
         # Selecionando K melhores features
-        X_KBest = SelectKBest(r_regression, k=K_BEST).fit_transform(X, y.values.ravel())
+        X_KBest = SelectKBest(r_regression, k=FEATURE_SELECTION_K_BEST).fit_transform(X, y.values.ravel())
         print(f"- Safra {safra} - SelectKBest: before: {X.shape} / after: {X_KBest.shape}")
 
         # Selecionando features dentre os 10% melhores
@@ -65,7 +73,7 @@ def get_results(features_df: pd.DataFrame, execution_started_at: datetime, resul
 
         print("- Calculando resultado para folds")
         result_df_all_folds = pd.DataFrame()
-        importance_safra = []
+        feature_importance_harvest = []
         for i, (train_indices, test_indices) in enumerate(kf.split(data_df_safra)):
             fold_num = i + 1
 
@@ -73,20 +81,33 @@ def get_results(features_df: pd.DataFrame, execution_started_at: datetime, resul
 
             result_df, importance = train_test_model(train_x, train_y, test_x, test_y, safra, fold_num)
 
+            feature_importance_harvest.append(importance)
+            feature_importance_all_harvests.append(importance)
             result_df_all_folds = pd.concat([result_df_all_folds, result_df])
-            importance_safra.append(importance)
 
         write_result(RESULT_FOLDER, result_description, execution_started_at, result_df_all_folds, safra)
-        importance_harvest_avg = calculate_importance_avg(importance_safra)
 
         print(f"- Feature importance para safra {safra}")
-        for k, v in importance_harvest_avg.items():
-            # TODO: Escrever em arquivo
-            print(f"Feature {k}: Score {v:.5f}")
+        # Calculando média dos feature importances para todos os folds, safra
+        feature_importance_harvest_avg = calculate_importance_avg(feature_importance_harvest)
+        feature_importance_harvest_avg_arr = [(k, v) for k, v in feature_importance_harvest_avg.items()]
+        feature_importance_harvest_df = pd.DataFrame(feature_importance_harvest_avg_arr, columns=["feature", "score"])
+        feature_importance_harvest_df = feature_importance_harvest_df.sort_values(by=["score"], key=natsort_keygen(), ascending=False)
+
+        for i in feature_importance_harvest_avg_arr:
+            print(f"{safra}: Feature {i[0]}: Score {i[1]:.5f}")
+
+        write_result(RESULT_FOLDER, result_description, execution_started_at, feature_importance_harvest_df, safra, "importances")
 
         result_df_all_harvests = pd.concat([result_df_all_harvests, result_df_all_folds])
         print("\n\n")
 
+    feature_importance_all_harvests_avg = calculate_importance_avg(feature_importance_all_harvests)
+    feature_importance_all_harvests_avg_arr = [(k, v) for k, v in feature_importance_all_harvests_avg.items()]
+    feature_importance_all_harvests_df = pd.DataFrame(feature_importance_all_harvests_avg_arr, columns=["feature", "score"])
+    feature_importance_all_harvests_df = feature_importance_all_harvests_df.sort_values(by=["score"], key=natsort_keygen(), ascending=False)
+
+    write_result(RESULT_FOLDER, result_description, execution_started_at, feature_importance_all_harvests_df, "all", "importances")
     write_result(RESULT_FOLDER, result_description, execution_started_at, result_df_all_harvests, "all")
 
     print("=====> Resultados considerando TODAS as safras juntas")
@@ -96,7 +117,7 @@ def get_results(features_df: pd.DataFrame, execution_started_at: datetime, resul
     X, y = prepare_X_y(data_df_all)
 
     # Selecionando K melhores features
-    X_KBest = SelectKBest(r_regression, k=K_BEST).fit_transform(X, y.values.ravel())
+    X_KBest = SelectKBest(r_regression, k=FEATURE_SELECTION_K_BEST).fit_transform(X, y.values.ravel())
     print(f"- TODAS as safras - SelectKBest: before: {X.shape} / after: {X_KBest.shape}")
 
     # Selecionando features dentre os 10% melhores
@@ -119,12 +140,18 @@ def get_results(features_df: pd.DataFrame, execution_started_at: datetime, resul
         importance_all.append(importance)
 
     write_result(RESULT_FOLDER, result_description, execution_started_at, result_df_all_folds, None)
-    importance_all_avg = calculate_importance_avg(importance_all)
 
     print("- Feature importance para TODAS as safras juntas")
-    for k, v in importance_all_avg.items():
-        # TODO: Escrever em arquivo
+    # Feature importances para todas as safras juntas
+    feature_importance_all_avg = calculate_importance_avg(importance_all)
+    feature_importance_all_avg_arr = [(k, v) for k, v in feature_importance_all_avg.items()]
+    feature_importance_all_df = pd.DataFrame(feature_importance_all_avg_arr, columns=["feature", "score"])
+    feature_importance_all_df = feature_importance_all_df.sort_values(by=["score"], key=natsort_keygen(), ascending=False)
+
+    for k, v in feature_importance_all_avg.items():
         print(f"Feature {k}: Score {v:.5f}")
+
+    write_result(RESULT_FOLDER, f"{result_description}_importances", execution_started_at, feature_importance_all_df, None, "importances")
 
     # plot the data for verification
     # ax = sns.scatterplot(x="precipitation_30d", y="precipitation_30d_count", hue="planting_relative_day",

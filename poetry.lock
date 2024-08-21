@@ -914,6 +914,21 @@ jinja2 = "*"
 matplotlib = "*"
 
 [[package]]
+name = "natsort"
+version = "8.4.0"
+description = "Simple yet flexible natural sorting in Python."
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "natsort-8.4.0-py3-none-any.whl", hash = "sha256:4732914fb471f56b5cce04d7bae6f164a592c7712e1c85f9ef585e197299521c"},
+    {file = "natsort-8.4.0.tar.gz", hash = "sha256:45312c4a0e5507593da193dedd04abb1469253b601ecaf63445ad80f0a1ea581"},
+]
+
+[package.extras]
+fast = ["fastnumbers (>=2.0.0)"]
+icu = ["PyICU (>=1.0.0)"]
+
+[[package]]
 name = "numpy"
 version = "2.0.1"
 description = "Fundamental package for array computing in Python"
@@ -1701,4 +1716,4 @@ watchdog = ["watchdog (>=2.3)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "b2aa214e971addf10e4c3b4a3f49a76d8d42fb7c83f20dd451748d69e4a45299"
+content-hash = "0c71098cadad59c88706cde75de9c290d99993466e53ab4fba7080590b4e4d6a"
