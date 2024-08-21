@@ -8,9 +8,9 @@ from sklearn.model_selection import KFold
 from sqlalchemy import create_engine
 
 from constants import DB_STRING
-from helpers.feature_importance import calculate_importance_avg
+from helpers.feature_importance import calculate_importance_avg, calculate_k_best, calculate_percentile
 from helpers.input_output import get_latest_file
-from helpers.result import write_result
+from helpers.result import write_result, read_result
 from source.occurrence import get_safras
 
 SEED = 85682938
@@ -25,6 +25,22 @@ def run(execution_started_at: datetime, safras: list = None):
     features_df = pd.read_csv(get_latest_file("features", "features_all.csv"))
 
     get_results(features_df, execution_started_at, "", safras)
+
+    importances_harvest_all = read_result(RESULT_FOLDER, "", execution_started_at, "all", "importances")
+    importances_all =  read_result(RESULT_FOLDER, "", execution_started_at, None, "importances")
+
+    features_df_k_best = calculate_k_best(FEATURE_SELECTION_K_BEST, importances_all)
+    features_df_percentile = calculate_percentile(FEATURE_SELECTION_PERCENTILE, importances_all)
+
+    columns = features_df.columns
+
+    filtered_columns_k_best_to_drop = [c for c in columns if c not in features_df_k_best["features"].tolist()]
+    features_df_k_best = features_df.drop(columns=filtered_columns_k_best_to_drop)
+    get_results(features_df_k_best, execution_started_at, "", safras)
+
+    filtered_columns_percentile_to_drop = [c for c in columns if c not in features_df_percentile["features"].tolist()]
+    features_df_percentile = features_df.drop(columns=filtered_columns_percentile_to_drop)
+    get_results(features_df_percentile, execution_started_at, "", safras)
 
 
 def get_results(
@@ -151,7 +167,7 @@ def get_results(
     for k, v in feature_importance_all_avg.items():
         print(f"Feature {k}: Score {v:.5f}")
 
-    write_result(RESULT_FOLDER, f"{result_description}_importances", execution_started_at, feature_importance_all_df, None, "importances")
+    write_result(RESULT_FOLDER, result_description, execution_started_at, feature_importance_all_df, None, "importances")
 
     # plot the data for verification
     # ax = sns.scatterplot(x="precipitation_30d", y="precipitation_30d_count", hue="planting_relative_day",

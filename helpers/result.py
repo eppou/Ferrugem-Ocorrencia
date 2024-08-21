@@ -47,7 +47,10 @@ def compose_filename(
     if filename_description_extra == "":
         filename_description_extra = ""
     else:
-        filename_description_extra = f"_{filename_description_extra}_"
+        if filename_description == "":
+            filename_description_extra = f"_{filename_description_extra}_"
+        else:
+            filename_description_extra = f"{filename_description_extra}_"
 
     filename_description += filename_description_extra
 

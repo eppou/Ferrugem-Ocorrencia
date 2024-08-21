@@ -1,3 +1,6 @@
+import pandas as pd
+
+
 def calculate_importance_avg(importance: list[dict]) -> dict:
     a_avg = {}
     size = len(importance)
@@ -18,3 +21,10 @@ def calculate_importance_avg(importance: list[dict]) -> dict:
 
     return a_avg_sorted
 
+
+def calculate_k_best(k: int, df: pd.DataFrame) -> pd.DataFrame:
+    pass
+
+
+def calculate_percentile(p: int, df: pd.DataFrame) -> pd.DataFrame:
+    pass
