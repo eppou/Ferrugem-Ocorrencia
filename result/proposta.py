@@ -20,10 +20,8 @@ RESULT_FOLDER = "proposta"
 
 def run(execution_started_at: datetime, safras: list = None):
     features_df = pd.read_csv(get_latest_file("features", "features_all.csv"))
-    features_with_zero_df = pd.read_csv(get_latest_file("features", "features_with_zero_all.csv"))
 
     get_results(features_df, execution_started_at, "", safras)
-    get_results(features_with_zero_df, execution_started_at, "with_zero", safras)
 
 
 def get_results(features_df: pd.DataFrame, execution_started_at: datetime, result_description: str,
