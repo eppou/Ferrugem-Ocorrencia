@@ -23,8 +23,13 @@ def calculate_importance_avg(importance: list[dict]) -> dict:
 
 
 def calculate_k_best(k: int, df: pd.DataFrame) -> pd.DataFrame:
-    pass
+    df = df.sort_values(by="score", ascending=False)
+
+    return df.head(k)
 
 
 def calculate_percentile(p: int, df: pd.DataFrame) -> pd.DataFrame:
-    pass
+    scores = df["score"]
+    t = np.percentile(scores, p)
+
+    return df[(df["score"] > t)]
