@@ -175,6 +175,7 @@ def calculate_precipitation_all_planting_days(
         precipitation_acc = filtered_df["prec"].sum()
         precipitation_count = filtered_df["prec"].count()
 
+        # TODO: adicionar _diff
         precipitation_features[f"precipitation_acc_{current_planting_relative_day}d"] = precipitation_acc
         precipitation_features[f"precipitation_count_{current_planting_relative_day}d"] = precipitation_count
 
