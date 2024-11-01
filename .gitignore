@@ -9,3 +9,7 @@ __pycache__
 .idea
 
 .DS_Store
+
+notebook/.venv
+notebook/Data/**/*.csv
+*.ipynb_checkpoints
