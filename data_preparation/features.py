@@ -137,14 +137,6 @@ def run(execution_started_at: datetime, harvest: list = None):
     db_con_engine.dispose()
 
 
-def processing_limit_reached(count_limit, count) -> bool:
-    if count_limit is not None:
-        if count == count_limit:
-            return True
-
-    return False
-
-
 # TODO: Aprimorar chute, ao invés de usar média, usar uma relação entre os dias da safra esperados por grupo relativo
 # DONE: Calcular assim: occurrence_date - planting_start_date
 def calculate_planting_relative_day(instance: pd.Series) -> int:

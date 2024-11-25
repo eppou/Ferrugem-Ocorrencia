@@ -82,9 +82,9 @@ def calculate_planting_start_date(instance: pd.Series) -> datetime.date:
     days_after_emergence_min = instance["days_after_emergence_min"]
     days_after_emergence_max = instance["days_after_emergence_max"]
 
-    emergence_days = s.mean([emergence_days_max, emergence_days_min])
-    days_after_emergence = s.mean([days_after_emergence_max, days_after_emergence_min])
+    emergence_days_mean = s.mean([emergence_days_max, emergence_days_min])
+    days_after_emergence_mean = s.mean([days_after_emergence_max, days_after_emergence_min])
 
-    planting_relative_day = round(emergence_days + days_after_emergence, 0)
+    interval = round(emergence_days_mean + days_after_emergence_mean, 0)
 
-    return occurrence_date - timedelta(days=planting_relative_day)
+    return occurrence_date - timedelta(days=interval)

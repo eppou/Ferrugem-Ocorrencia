@@ -68,7 +68,7 @@ def run(execution_started_at: datetime, silent=True):
         if not silent:
             print(f"=====> {segment_id_precipitation=}")
             print(
-                f"\t- Calculating severity (accumulated) for each day of the harvest until {MAX_PLANTING_RELATIVE_DAY} days"
+                f"\t- Calculating severity (accumulated) for each day of the planting until {MAX_PLANTING_RELATIVE_DAY} days"
             )
         severity_list_instance = calculate_severity_all_planting_days(
             occurrence_id,
