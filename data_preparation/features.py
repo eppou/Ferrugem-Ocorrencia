@@ -35,13 +35,32 @@ def run(execution_started_at: datetime, harvest: list = None):
     db_con_engine = create_engine(DB_STRING)
     conn = db_con_engine.connect()
 
-    precipitation_df = pd.read_sql_query(sql=text(QUERY_PRECIPITATION), con=conn, parse_dates=["date_precipitation"])
+    chunk_size = 10000  # Número de linhas por bloco
+
+    # Inicializar uma lista para armazenar os blocos
+    chunks = []
+
+    # Usar cursor server-side para streaming de resultados sem fechar a conexão
+    result = conn.execution_options(stream_results=True).execute(text(QUERY_PRECIPITATION))
+    columns = result.keys()
+
+    # Ler dados em blocos
+    while True:
+        rows = result.fetchmany(chunk_size)
+        if not rows:
+            break
+        chunks.append(pd.DataFrame(rows, columns=columns))
+
+    # Concatenar os blocos em um único DataFrame
+    precipitation_df = pd.concat(chunks, ignore_index=True)
+        
+    print("=====> Processing features")
     severity_df = pd.read_csv(get_latest_file("severity", "severity.csv"))
     instances_df = pd.read_csv(
         get_latest_file("instances", "instances_all.csv"),
         parse_dates=["data_ocorrencia", "planting_start_date"],
     )
-
+    
     if harvest is None:
         harvest = [s['safra'] for s in get_safras(conn)]
         # harvest = harvest[1:]  # Removendo a última safra, pois está muito incompleta
@@ -137,6 +156,14 @@ def run(execution_started_at: datetime, harvest: list = None):
     db_con_engine.dispose()
 
 
+def processing_limit_reached(count_limit, count) -> bool:
+    if count_limit is not None:
+        if count == count_limit:
+            return True
+
+    return False
+
+
 # TODO: Aprimorar chute, ao invés de usar média, usar uma relação entre os dias da safra esperados por grupo relativo
 # DONE: Calcular assim: occurrence_date - planting_start_date
 def calculate_planting_relative_day(instance: pd.Series) -> int:
@@ -156,13 +183,19 @@ def calculate_precipitation_all_planting_days(
     df = df[df["segment_id"] == segment_id_precipitation]
     df = df[df["prec"] > 0.5]
 
+    # Converter a coluna 'date_precipitation' para datetime
+    df["date_precipitation"] = pd.to_datetime(df["date_precipitation"])
+
     current_planting_relative_day = FEATURE_DAY_INTERVAL
     planting_start_date = pd.to_datetime(planting_start_date)
     current_date = pd.to_datetime(planting_start_date + timedelta(days=current_planting_relative_day))
     precipitation_features = {}
 
     while current_planting_relative_day <= MAX_PLANTING_RELATIVE_DAY:
-        filtered_df = df[(df["date_precipitation"] >= planting_start_date) & (df["date_precipitation"] <= current_date)]
+        filtered_df = df[
+            (df["date_precipitation"] >= planting_start_date) & 
+            (df["date_precipitation"] <= current_date)
+        ]
 
         precipitation_acc = filtered_df["prec"].sum()
         precipitation_count = filtered_df["prec"].count()
