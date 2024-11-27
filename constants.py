@@ -4,7 +4,7 @@ INPUT_PATH = Path(__file__).parent / "input/"
 OUTPUT_PATH = Path(__file__).parent / "output/"
 OUTPUT_PATH_JUPYTER = Path(__file__).parent / "notebook/Data/"
 
-DB_STRING = "postgresql://crke:1965@localhost:5432/mestrado_pesquisa"
+DB_STRING = "postgresql://username:passaword@localhost:5432/mestrado_pesquisa"
 
 PARANA_MIN_LATITUDE = -26.75
 PARANA_MAX_LATITUDE = -22.44
