@@ -6,10 +6,10 @@ import pandas as pd
 from sqlalchemy import create_engine
 
 from calculation.threshold import calculate_threshold_for_baseline_model
-from constants import DB_STRING
 from helpers.input_output import get_latest_file
 from helpers.result import write_result
 from source.occurrence import get_safras
+from config import Config
 
 K_FOLDS = 5
 SEED = 492848
@@ -21,9 +21,9 @@ de 5, 10 e 15 dias. O threshold é calculado pela severidade média em 5, 10 e 1
 """
 
 
-def run(execution_started_at: datetime, safras: list = None):
+def run(execution_started_at: datetime, cfg: Config, safras: list = None):
 # TODO: Corrigir resultados, ou a severidade, a severidade está muito alta. severity_xd zerada e dia relativo zerado
-    db_con_engine = create_engine(DB_STRING)
+    db_con_engine = create_engine(cfg.database_config.dbstring)
     conn = db_con_engine.connect()
 
     severity_df = pd.read_csv(get_latest_file("severity", "severity.csv"))

@@ -13,3 +13,5 @@ __pycache__
 notebook/.venv
 notebook/Data/**/*.csv
 *.ipynb_checkpoints
+
+config.cfg

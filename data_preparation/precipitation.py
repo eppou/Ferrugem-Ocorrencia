@@ -3,7 +3,7 @@ from datetime import datetime
 import pandas as pd
 from sqlalchemy import create_engine, text
 
-from constants import DB_STRING
+from config import Config
 from data_preparation.constants import QUERY_PRECIPITATION
 from helpers.input_output import output_file
 
@@ -14,8 +14,8 @@ Used for analysis only. Model feature extraction takes directly from DB.
 """
 
 
-def run(execution_started_at: datetime):
-    db_con_engine = create_engine(DB_STRING)
+def run(execution_started_at: datetime, cfg: Config):
+    db_con_engine = create_engine(cfg.database_config.dbstring)
     conn = db_con_engine.connect()
 
     precipitation_df = pd.read_sql_query(sql=text(QUERY_PRECIPITATION), con=conn)

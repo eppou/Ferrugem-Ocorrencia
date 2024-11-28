@@ -4,7 +4,8 @@ from time import sleep
 import pandas as pd
 from sqlalchemy import create_engine, text
 
-from constants import DB_STRING, MAX_PLANTING_RELATIVE_DAY, FEATURE_DAY_INTERVAL
+from config import Config
+from constants import MAX_PLANTING_RELATIVE_DAY, FEATURE_DAY_INTERVAL
 from data_preparation.constants import QUERY_PRECIPITATION
 from helpers.input_output import get_latest_file, output_file
 from source.occurrence import get_safras
@@ -31,8 +32,8 @@ from source.occurrence import get_safras
 # DONE: Adicionar índice na busca do vizinho mais próximo no banco
 # TODO: Verificar se dataset de precipitacao nao contem duplicados
 # TODO: Verificar se os dados para as ocorrências estão presentes no intervalo de datas das safras (harvest_start_date e harvest_end_date)
-def run(execution_started_at: datetime, harvest: list = None):
-    db_con_engine = create_engine(DB_STRING)
+def run(execution_started_at: datetime, cfg: Config, harvest: list = None):
+    db_con_engine = create_engine(cfg.database_config.dbstring)
     conn = db_con_engine.connect()
 
     chunk_size = 10000  # Número de linhas por bloco

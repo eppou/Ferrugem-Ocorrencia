@@ -3,10 +3,11 @@ from pprint import pprint
 import geopandas as gpd
 from sqlalchemy import create_engine
 
-from constants import INPUT_PATH, DB_STRING
+from config import Config
+from constants import INPUT_PATH
 
 
-def run():
+def run(cfg: Config):
     # Import NON-soybean areas in state of Paraná (PR)
     path = INPUT_PATH / "shapefiles_soybean_areas/shapefile_non_soybean_areas_parana_2021.gpkg"
 
@@ -27,5 +28,5 @@ def run():
     pprint(gdf_non_soybean_areas_parana.crs)
 
     # Persisting into new DB table
-    db_con_engine = create_engine(DB_STRING)
+    db_con_engine = create_engine(cfg.database_config.dbstring)
     gdf_non_soybean_areas_parana.to_postgis("soybean_areas", db_con_engine, if_exists="replace")

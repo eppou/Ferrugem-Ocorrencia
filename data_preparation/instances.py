@@ -5,7 +5,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 
 from calculation.coordinates import find_nearest_segment_id
-from constants import DB_STRING
+from config import Config
 from data_preparation.constants import QUERY_OCORRENCIAS
 from helpers.input_output import output_file
 from source.occurrence import get_safras
@@ -16,8 +16,8 @@ from source.occurrence import get_safras
 # 3. Para cada não-ocorrência, usar dados da safra para gerar features. Chutar um intervalo entre o começo e fim da
 # safra como "data de verificado como não ocorrência". Calcular features.
 
-def run(execution_started_at: datetime):
-    db_con_engine = create_engine(DB_STRING)
+def run(execution_started_at: datetime, cfg: Config):
+    db_con_engine = create_engine(cfg.database_config.dbstring)
     conn = db_con_engine.connect()
 
     instances_df_all = pd.DataFrame()

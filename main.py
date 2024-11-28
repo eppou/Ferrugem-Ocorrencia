@@ -3,6 +3,7 @@ import sys
 import time
 from datetime import datetime
 from typing import Callable
+import configparser
 
 import data_preparation.features as features
 import data_preparation.features_with_zero as features_with_zero
@@ -13,9 +14,10 @@ import result.concorrente as concorrente
 import result.proposta as proposta
 import script.output_load_jupyter as output_load_jupyter
 import testlab.download_cptec as download_precipitation
+from config import Config, DatabaseConfig
 
 
-def match_and_run():
+def match_and_run(cfg: Config):
     if len(sys.argv) < 2:
         raise RuntimeError("Missing arguments")
 
@@ -28,17 +30,17 @@ def match_and_run():
 
         case "concorrente":
             run([
-                concorrente.run,
+                (concorrente.run, [cfg]),
             ])
 
         case "severity":
             run([
-                (severity.run, [False]),
+                (severity.run, [cfg, False]),
             ])
 
         case "precipitation":
             run([
-                precipitation.run,
+                (precipitation.run, [cfg]),
             ])
 
         case "download_precipitation":
@@ -48,12 +50,12 @@ def match_and_run():
 
         case "instances":
             run([
-                instances.run,
+                (instances.run, [cfg]),
             ])
 
         case "features":
             run([
-                features.run,
+                (features.run, [cfg])
             ])
 
         case "features_with_zero":
@@ -63,18 +65,18 @@ def match_and_run():
 
         case "pipeline":
             run([
-                instances.run,
-                # severity.run,
-                features.run,
+                (instances.run, [cfg]),
+                # (severity.run, [cfg, False]),
+                (features.run, [cfg]),
                 features_with_zero.run,
-                concorrente.run,
-                proposta.run,
+                (concorrente.run, [cfg]),
+                (proposta.run, [cfg]),
             ])
 
         case "pipeline_results":
             run([
-                concorrente.run,
-                proposta.run,
+                (concorrente.run, [cfg]),
+                (proposta.run, [cfg]),
             ])
 
         case "output_load_jupyter":
@@ -124,6 +126,16 @@ def run(objects_to_run: list[Callable|tuple[Callable, list]]):
     print(f">>>>> Execution took {execution_ms}ms ({execution_s}s) <<<<<")
     print()
 
+def parse_config() -> Config:
+    config = configparser.ConfigParser()
+    config.read(r"config.cfg")
+
+    return Config(
+        DatabaseConfig(
+            dbstring=config.get("database", "dbstring")
+        )
+    )
+
 
 if __name__ == "__main__":
-    match_and_run()
+    match_and_run(parse_config())

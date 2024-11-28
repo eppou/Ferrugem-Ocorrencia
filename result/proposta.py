@@ -7,7 +7,7 @@ from sklearn.feature_selection import SelectKBest, SelectPercentile, r_regressio
 from sklearn.model_selection import KFold
 from sqlalchemy import create_engine
 
-from constants import DB_STRING
+from config import Config
 from helpers.feature_importance import calculate_importance_avg, calculate_k_best, calculate_percentile
 from helpers.input_output import get_latest_file
 from helpers.result import write_result, read_result
@@ -21,10 +21,10 @@ FEATURE_SELECTION_K_BEST = 10
 FEATURE_SELECTION_PERCENTILE = 75
 
 
-def run(execution_started_at: datetime, safras: list = None):
+def run(execution_started_at: datetime, cfg: Config, safras: list = None):
     features_df = pd.read_csv(get_latest_file("features", "features_all.csv"))
 
-    get_results(features_df, execution_started_at, "", safras, write_importances=True)
+    get_results(cfg, features_df, execution_started_at, "", safras, write_importances=True)
 
     """
     importances_harvest_all: Feature Importances calculados individualmente para cada safra e depois feito a média.
@@ -40,21 +40,22 @@ def run(execution_started_at: datetime, safras: list = None):
 
     filtered_columns_k_best_to_drop = [c for c in columns if c not in features_df_k_best["feature"].tolist()]
     features_df_k_best = features_df.drop(columns=filtered_columns_k_best_to_drop)
-    get_results(features_df_k_best, execution_started_at, "k-best", safras)
+    get_results(cfg, features_df_k_best, execution_started_at, "k-best", safras)
 
     filtered_columns_percentile_to_drop = [c for c in columns if c not in features_df_percentile["feature"].tolist()]
     features_df_percentile = features_df.drop(columns=filtered_columns_percentile_to_drop)
-    get_results(features_df_percentile, execution_started_at, "percentile", safras)
+    get_results(cfg, features_df_percentile, execution_started_at, "percentile", safras)
 
 
 def get_results(
+        cfg: Config,
         features_df: pd.DataFrame,
         execution_started_at: datetime,
         result_description: str,
         safras: list = None,
         write_importances: bool = False,
 ):
-    db_con_engine = create_engine(DB_STRING)
+    db_con_engine = create_engine(cfg.database_config.dbstring)
     conn = db_con_engine.connect()
 
     data_df = features_df

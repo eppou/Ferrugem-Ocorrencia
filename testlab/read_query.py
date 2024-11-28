@@ -1,10 +1,11 @@
 import pandas as pd
 from sqlalchemy import create_engine
-from constants import DB_STRING
+
+from config import Config
 
 
-def run():
-    db_con_engine = create_engine(DB_STRING)
+def run(cfg: Config):
+    db_con_engine = create_engine(cfg.database_config.dbstring)
 
     ocorrencias = pd.read_sql_query(
         """
