@@ -6,6 +6,7 @@ from sqlalchemy import create_engine, text
 
 from config import Config
 from constants import MAX_PLANTING_RELATIVE_DAY, FEATURE_DAY_INTERVAL
+from constants import CHUNK_SIZE
 from data_preparation.constants import QUERY_PRECIPITATION
 from helpers.input_output import get_latest_file, output_file
 from source.occurrence import get_safras
@@ -36,24 +37,8 @@ def run(execution_started_at: datetime, cfg: Config, harvest: list = None):
     db_con_engine = create_engine(cfg.database_config.dbstring)
     conn = db_con_engine.connect()
 
-    chunk_size = 10000  # Número de linhas por bloco
-
-    # Inicializar uma lista para armazenar os blocos
-    chunks = []
-
-    # Usar cursor server-side para streaming de resultados sem fechar a conexão
-    result = conn.execution_options(stream_results=True).execute(text(QUERY_PRECIPITATION))
-    columns = result.keys()
-
-    # Ler dados em blocos
-    while True:
-        rows = result.fetchmany(chunk_size)
-        if not rows:
-            break
-        chunks.append(pd.DataFrame(rows, columns=columns))
-
-    # Concatenar os blocos em um único DataFrame
-    precipitation_df = pd.concat(chunks, ignore_index=True)
+    
+    precipitation_df = fetch_precipitation_data(conn, QUERY_PRECIPITATION, CHUNK_SIZE)
         
     print("=====> Processing features")
     severity_df = pd.read_csv(get_latest_file("severity", "severity.csv"))
@@ -235,3 +220,35 @@ def calculate_severity(
     severity = df["severity_acc"].array[0]
 
     return severity
+
+def fetch_precipitation_data(conn, query, chunk_size):
+    """
+    Faz streaming de resultados de uma consulta SQL usando um cursor server-side,
+    carregando os dados em blocos e retornando um DataFrame consolidado.
+
+    Args:
+        conn (sqlalchemy.engine.Connection): Conexão SQLAlchemy ativa.
+        query (str): A consulta SQL a ser executada.
+        chunk_size (int): Tamanho do bloco de dados a ser lido em cada iteração.
+
+    Returns:
+        pandas.DataFrame: DataFrame consolidado com todos os dados da consulta.
+    """
+    # Inicializar uma lista para armazenar os blocos
+    precipitation_df_chunks = []
+
+    # Executar a consulta com streaming de resultados
+    result = conn.execution_options(stream_results=True).execute(text(query))
+    columns = result.keys()
+
+    # Ler dados em blocos
+    while True:
+        rows = result.fetchmany(chunk_size)
+        if not rows:
+            break
+        precipitation_df_chunks.append(pd.DataFrame(rows, columns=columns))
+
+    # Concatenar os blocos em um único DataFrame
+    precipitation_df = pd.concat(precipitation_df_chunks, ignore_index=True)
+    
+    return precipitation_df
