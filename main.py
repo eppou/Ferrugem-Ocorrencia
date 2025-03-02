@@ -7,11 +7,13 @@ import configparser
 
 import data_preparation.features as features
 import data_preparation.features_with_zero as features_with_zero
+import data_preparation.features_with_augmentation as features_with_augmentation
 import data_preparation.instances as instances
 import data_preparation.precipitation as precipitation
 import data_preparation.severity as severity
 import result.concorrente as concorrente
 import result.proposta as proposta
+import result.proposta2 as proposta2
 import script.output_load_jupyter as output_load_jupyter
 import testlab.download_cptec as download_precipitation
 from config import Config, DatabaseConfig
@@ -25,7 +27,12 @@ def match_and_run(cfg: Config):
     match command:
         case "proposta":
             run([
-                proposta.run,
+                (proposta.run, [cfg]),
+            ])
+            
+        case "proposta2":
+            run([
+                (proposta2.run, [cfg]),
             ])
 
         case "concorrente":
@@ -61,6 +68,11 @@ def match_and_run(cfg: Config):
         case "features_with_zero":
             run([
                 features_with_zero.run,
+            ])
+        
+        case "features_with_augmentation":
+            run([
+                (features_with_augmentation.run, [cfg]),
             ])
 
         case "pipeline":
