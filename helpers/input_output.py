@@ -6,14 +6,28 @@ from constants import OUTPUT_PATH
 
 def output_file(execution_started: datetime, basedir: str, filename: str):
     """
-    Generates the output file path for a basedir, considering current execution time.
+    Generates the output file path and filename for a basedir, considering current execution time.
     """
-    output_dir = OUTPUT_PATH / f"{basedir}_{execution_started.strftime("%Y-%m-%d_%H-%M-%S")}"
+    output_dir = OUTPUT_PATH / f"{basedir}_{execution_started.strftime('%Y-%m-%d_%H-%M-%S')}"
 
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
 
     return os.path.join(output_dir, filename)
+
+def output_path(execution_started: datetime, basedir: str):
+    """
+    Generates the output file path for a basedir, considering current execution time.
+    """
+    output_dir = OUTPUT_PATH / f"{basedir}_{execution_started.strftime('%Y-%m-%d_%H-%M-%S')}"
+    #adiciona uma barra no final do diretório
+    output_dir = str(output_dir) + os.sep
+
+    print(f"Output path: {output_dir}")
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+        
+    return output_dir
 
 
 def get_latest_file(basedir: str, filename: str) -> str:
