@@ -1,0 +1,2 @@
+[database]
+dbstring = postgresql://username:password@localhost:5432/mestrado_pesquisa

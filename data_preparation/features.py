@@ -4,7 +4,9 @@ from time import sleep
 import pandas as pd
 from sqlalchemy import create_engine, text
 
-from constants import DB_STRING, MAX_PLANTING_RELATIVE_DAY, FEATURE_DAY_INTERVAL
+from config import Config
+from constants import MAX_PLANTING_RELATIVE_DAY, FEATURE_DAY_INTERVAL
+from constants import CHUNK_SIZE
 from data_preparation.constants import QUERY_PRECIPITATION
 from helpers.input_output import get_latest_file, output_file
 from source.occurrence import get_safras
@@ -31,17 +33,20 @@ from source.occurrence import get_safras
 # DONE: Adicionar índice na busca do vizinho mais próximo no banco
 # TODO: Verificar se dataset de precipitacao nao contem duplicados
 # TODO: Verificar se os dados para as ocorrências estão presentes no intervalo de datas das safras (harvest_start_date e harvest_end_date)
-def run(execution_started_at: datetime, harvest: list = None):
-    db_con_engine = create_engine(DB_STRING)
+def run(execution_started_at: datetime, cfg: Config, harvest: list = None):
+    db_con_engine = create_engine(cfg.database_config.dbstring)
     conn = db_con_engine.connect()
 
-    precipitation_df = pd.read_sql_query(sql=text(QUERY_PRECIPITATION), con=conn, parse_dates=["date_precipitation"])
+    
+    precipitation_df = fetch_precipitation_data(conn, QUERY_PRECIPITATION, CHUNK_SIZE)
+        
+    print("=====> Processing features")
     severity_df = pd.read_csv(get_latest_file("severity", "severity.csv"))
     instances_df = pd.read_csv(
         get_latest_file("instances", "instances_all.csv"),
         parse_dates=["data_ocorrencia", "planting_start_date"],
     )
-
+    
     if harvest is None:
         harvest = [s['safra'] for s in get_safras(conn)]
         # harvest = harvest[1:]  # Removendo a última safra, pois está muito incompleta
@@ -137,6 +142,14 @@ def run(execution_started_at: datetime, harvest: list = None):
     db_con_engine.dispose()
 
 
+def processing_limit_reached(count_limit, count) -> bool:
+    if count_limit is not None:
+        if count == count_limit:
+            return True
+
+    return False
+
+
 # TODO: Aprimorar chute, ao invés de usar média, usar uma relação entre os dias da safra esperados por grupo relativo
 # DONE: Calcular assim: occurrence_date - planting_start_date
 def calculate_planting_relative_day(instance: pd.Series) -> int:
@@ -156,13 +169,19 @@ def calculate_precipitation_all_planting_days(
     df = df[df["segment_id"] == segment_id_precipitation]
     df = df[df["prec"] > 0.5]
 
+    # Converter a coluna 'date_precipitation' para datetime
+    df["date_precipitation"] = pd.to_datetime(df["date_precipitation"])
+
     current_planting_relative_day = FEATURE_DAY_INTERVAL
     planting_start_date = pd.to_datetime(planting_start_date)
     current_date = pd.to_datetime(planting_start_date + timedelta(days=current_planting_relative_day))
     precipitation_features = {}
 
     while current_planting_relative_day <= MAX_PLANTING_RELATIVE_DAY:
-        filtered_df = df[(df["date_precipitation"] >= planting_start_date) & (df["date_precipitation"] <= current_date)]
+        filtered_df = df[
+            (df["date_precipitation"] >= planting_start_date) & 
+            (df["date_precipitation"] <= current_date)
+        ]
 
         precipitation_acc = filtered_df["prec"].sum()
         precipitation_count = filtered_df["prec"].count()
@@ -201,3 +220,35 @@ def calculate_severity(
     severity = df["severity_acc"].array[0]
 
     return severity
+
+def fetch_precipitation_data(conn, query, chunk_size):
+    """
+    Faz streaming de resultados de uma consulta SQL usando um cursor server-side,
+    carregando os dados em blocos e retornando um DataFrame consolidado.
+
+    Args:
+        conn (sqlalchemy.engine.Connection): Conexão SQLAlchemy ativa.
+        query (str): A consulta SQL a ser executada.
+        chunk_size (int): Tamanho do bloco de dados a ser lido em cada iteração.
+
+    Returns:
+        pandas.DataFrame: DataFrame consolidado com todos os dados da consulta.
+    """
+    # Inicializar uma lista para armazenar os blocos
+    precipitation_df_chunks = []
+
+    # Executar a consulta com streaming de resultados
+    result = conn.execution_options(stream_results=True).execute(text(query))
+    columns = result.keys()
+
+    # Ler dados em blocos
+    while True:
+        rows = result.fetchmany(chunk_size)
+        if not rows:
+            break
+        precipitation_df_chunks.append(pd.DataFrame(rows, columns=columns))
+
+    # Concatenar os blocos em um único DataFrame
+    precipitation_df = pd.concat(precipitation_df_chunks, ignore_index=True)
+    
+    return precipitation_df

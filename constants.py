@@ -4,8 +4,6 @@ INPUT_PATH = Path(__file__).parent / "input/"
 OUTPUT_PATH = Path(__file__).parent / "output/"
 OUTPUT_PATH_JUPYTER = Path(__file__).parent / "notebook/Data/"
 
-DB_STRING = "postgresql://username:yourpassword@localhost:5432/mestrado_pesquisa"
-
 PARANA_MIN_LATITUDE = -26.75
 PARANA_MAX_LATITUDE = -22.44
 
@@ -21,3 +19,5 @@ FEATURE_DAY_INTERVAL = 7
 
 EMERGENCE_DAYS_MIN = 5
 EMERGENCE_DAYS_MAX = 8
+
+CHUNK_SIZE = 1000

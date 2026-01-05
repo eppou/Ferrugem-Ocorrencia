@@ -5,7 +5,8 @@ from sqlalchemy import create_engine
 
 from calculation.precipitation import collect_precipitation_planting
 from calculation.severity import calculate_dsv_acc_with_df
-from constants import DB_STRING, MAX_PLANTING_RELATIVE_DAY
+from config import Config
+from constants import MAX_PLANTING_RELATIVE_DAY
 from helpers.input_output import get_latest_file, output_file
 from source.occurrence import get_safras
 
@@ -14,8 +15,8 @@ Calculate accumulated severity for every occurrence, for all days until MAX_PLAN
 """
 
 
-def run(execution_started_at: datetime, silent=True):
-    db_con_engine = create_engine(DB_STRING)
+def run(execution_started_at: datetime, cfg: Config, silent=True):
+    db_con_engine = create_engine(cfg.database_config.dbstring)
     conn = db_con_engine.connect()
 
     df = pd.read_csv(
