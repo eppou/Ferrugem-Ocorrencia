@@ -12,6 +12,11 @@ from helpers.input_output import get_latest_file, output_path
 # ============================================================
 
 def gerar_feature_geojson(row):
+    data_prev_str = None
+    if pd.notnull(row.get('data_prevista_exibicao')):
+        val = row['data_prevista_exibicao']
+        data_prev_str = val.strftime('%Y-%m-%d') if isinstance(val, pd.Timestamp) else str(val)
+
     return {
         "type": "Feature",
         "geometry": {
@@ -20,11 +25,13 @@ def gerar_feature_geojson(row):
         },
         "properties": {
             "id": int(row['ocorrencia_id']) if 'ocorrencia_id' in row else None,
-            "data": row['data_ocorrencia'].strftime('%Y-%m-%d'),
-            "real": int(row['target']),
-            "predito_prob": float(row['predito']), # Agora garantido entre 0 e 1
-            "predito_classe": 1 if row['predito'] >= 0.77 else 0,
-            "acertou": bool((row['predito'] >= 0.77) == (row['target'] == 1))
+            "data_simulacao": row['data_simulacao_str'],
+            "data_real_confirmacao": row['data_ocorrencia'].strftime('%Y-%m-%d'),
+            "status_monitoramento": row['status_exibicao'],
+            "probabilidade_atual": float(row['predito']) if pd.notnull(row['predito']) else None,
+            "previsao_chegada_data": data_prev_str,
+            "dias_ate_chegada": int(row['dias_ate_chegada']) if pd.notnull(row.get('dias_ate_chegada')) else None,
+            "erro_final_dias": int(row['erro_final']) if pd.notnull(row.get('erro_final')) else None
         }
     }
 
@@ -32,200 +39,163 @@ def gerar_feature_geojson(row):
 #  SCRIPT PRINCIPAL
 # ============================================================
 
-def run(execution_started_at: datetime, cfg: Config, target_safras: list = [2017]):
-    """
-    Gera GeoJSONs focados na janela da safra (Setembro a Abril).
-    param target_safras: Lista de anos de colheita. Ex: [2021] processa Set/20 a Abr/21.
-    """
+def run(execution_started_at: datetime, cfg: Config, target_safras: list = [2018]):
     
-    # --- 1. CONFIGURAÇÕES DE INPUT---
     DATASET_PATH = get_latest_file("features", "features_SI.csv")
     PASTA_MODELOS = "modelos_por_safra"
     NOME_BASE_MODELO = "XGB_classificador_temp"
+    LIMIAR = 0.66
     
-    OUTPUT_FOLDER = output_path(execution_started_at, 'geojson_evolution')
-    if not os.path.exists(OUTPUT_FOLDER):
-        os.makedirs(OUTPUT_FOLDER)
+    OUTPUT_FOLDER = output_path(execution_started_at, 'geojson_evolution_metrics_fixed')
+    if not os.path.exists(OUTPUT_FOLDER): os.makedirs(OUTPUT_FOLDER)
+    
+    STEP_DAYS = 15
+    if not target_safras: target_safras = [datetime.now().year]
 
-    STEP_DAYS = 15 
-
-    # Se não informar safras, define uma lista padrão ou avisa
-    if not target_safras:
-        print(" Nenhuma safra especificada. Usando safra atual como exemplo.")
-        target_safras = [datetime.now().year]
-
-    # --- 2. CARGA DE DADOS ---
-    print(" Carregando dataset completo...")
+    print("📂 A carregar dataset...")
     df = pd.read_csv(DATASET_PATH)
     df['data_ocorrencia'] = pd.to_datetime(df['data_ocorrencia'], format='%Y-%m-%d')
     df['data'] = pd.to_datetime(df['data'], format='%Y-%m-%d')
-    # Otimização: remove colunas desnecessárias para processamento, mas mantém Lat/Long
-    # df = df.drop(columns=['...']) # Opcional se o DF for gigante
 
-    # ============================================================
-    #  LOOP POR SAFRA (A unidade principal agora é a SAFRA)
-    # ============================================================
     for safra_alvo in target_safras:
-        
-        # 1. Definir o Modelo e a Janela de Tempo
-        # Se safra_alvo é 2021:
-        # Modelo usado: 2020 (treinado com dados até o fim da safra 2020)
         ano_modelo = safra_alvo - 1
-        
-        # Janela: 01/09/2020 a 01/04/2021
         data_inicio_safra = pd.to_datetime(f"{ano_modelo}-09-01")
         data_fim_safra = pd.to_datetime(f"{safra_alvo}-04-01")
         
-        print(f"\n PROCESSANDO SAFRA {safra_alvo}")
-        print(f" Janela: {data_inicio_safra.date()} até {data_fim_safra.date()}")
-        print(f" Modelo Solicitado: {NOME_BASE_MODELO}_{ano_modelo}.pkl")
-
-        # 2. Carregar Modelo
-        path_modelo = os.path.join(PASTA_MODELOS, f"{NOME_BASE_MODELO}_{(ano_modelo)}.pkl")
-        if not os.path.exists(path_modelo):
-            print(f" ERRO: Modelo {path_modelo} não encontrado. Pulando safra.")
-            continue
+        print(f"\n🚜 SAFRA {safra_alvo}")
         
+        path_modelo = os.path.join(PASTA_MODELOS, f"{NOME_BASE_MODELO}_{ano_modelo}.pkl")
+        if not os.path.exists(path_modelo):
+            print(f"   ❌ Modelo não encontrado: {path_modelo}")
+            continue
         model = joblib.load(path_modelo)
 
-        # 3. Filtrar Dataset para a Safra inteira (Otimização)
-        # Pegamos tudo dessa janela de uma vez para não filtrar o DF gigante mil vezes
         df_safra = df[
             (df['data_ocorrencia'] >= data_inicio_safra) & 
             (df['data_ocorrencia'] <= data_fim_safra)
         ].copy()
+        if df_safra.empty: continue
 
-        if df_safra.empty:
-            print("   Sem dados para este período no CSV.")
-            continue
+        cols_drop = ['ocorrencia_id', 'data', 'data_ocorrencia', 'target', 'safra']
+        cols_existentes = [c for c in cols_drop if c in df_safra.columns]
+        X_full = df_safra.drop(columns=cols_existentes)
+        if hasattr(model, "feature_names_in_"): X_full = X_full[model.feature_names_in_]
 
-        # 4. Loop Temporal (Passo a passo dentro da safra)
+        df_safra['predito'] = np.clip(model.predict(X_full), 0, 1)
+        df_safra['risco_detectado'] = df_safra['predito'] >= LIMIAR
+
+        registros_infectados = {} 
         data_atual = data_inicio_safra
-        acuracia_media = []
         
         while data_atual <= data_fim_safra:
             
-            # Recorte cumulativo: do início da safra (01/09) até o dia atual
             df_dia = df_safra[df_safra['data'] <= data_atual].copy()
-            
-            # Remove duplicatas (último status de cada ocorrência até o momento)
-            if not df_dia.empty:
-                df_dia = df_dia.sort_values('data').drop_duplicates(subset='ocorrencia_id', keep='last')
-            
-            # Se não tem nada acumulado (início da safra), pula
             if df_dia.empty:
                 data_atual += timedelta(days=STEP_DAYS)
                 continue
-
-            # --- PREPARAÇÃO PARA PREDIÇÃO ---
-            cols_ignore = ['ocorrencia_id', 'data', 'data_ocorrencia', 'target', 'safra']
             
-            cols_existentes_drop = [c for c in cols_ignore if c in df_dia.columns]
-            X = df_dia.drop(columns=cols_existentes_drop)
+            df_dia = df_dia.sort_values('data').drop_duplicates(subset='ocorrencia_id', keep='last')
 
-            # Reordena colunas conforme o modelo exige (Segurança XGBoost)
-            if hasattr(model, "feature_names_in_"):
-                # Filtra apenas colunas que o modelo conhece e na ordem certa
-                # Se faltar coluna no DF que o modelo precisa, vai dar erro aqui
-                X = X[model.feature_names_in_]
+            l_prev, l_dias, l_erro, l_status = [], [], [], []
 
-            try:
-                # Predição
-                raw_pred = model.predict(X)
+            for _, row in df_dia.iterrows():
+                oid = row['ocorrencia_id']
+                dt_real = row['data_ocorrencia']
                 
-                # CORREÇÃO: Clip para garantir intervalo [0, 1]
-                # Remove problemas de -0.05 ou 1.08
-                df_dia['predito'] = np.clip(raw_pred, 0, 1)
-                
-                #conta o numero de acertou igual a 1 para saber quantos acertos teve
-                df_dia['target'] = df_dia['target'].astype(int)
-                # ... (logo após o np.clip) ...
-                df_dia['predito'] = np.clip(raw_pred, 0, 1)
+                # --- MEMÓRIA ---
+                if dt_real <= data_atual:
+                    if oid not in registros_infectados:
+                        # Pega o primeiro aviso da história
+                        alerta_passado = df_safra[
+                            (df_safra['ocorrencia_id'] == oid) & 
+                            (df_safra['risco_detectado'] == True)
+                        ]['data'].min()
+                        
+                        if pd.notnull(alerta_passado):
+                            erro = (alerta_passado - dt_real).days
+                            status = "Infectado (Antecipado)" if erro < 0 else "Infectado (Atrasado)"
+                            registros_infectados[oid] = {'prev': alerta_passado, 'erro': erro, 'status': status}
+                        else:
+                            registros_infectados[oid] = {'prev': None, 'erro': None, 'status': "Infectado (Sem Aviso)"}
+                    
+                    mem = registros_infectados[oid]
+                    l_prev.append(mem['prev'])
+                    l_erro.append(mem['erro'])
+                    l_status.append(mem['status'])
+                    l_dias.append(None)
+                else:
+                    futuro = df_safra[
+                        (df_safra['ocorrencia_id'] == oid) &
+                        (df_safra['data'] > data_atual) & 
+                        (df_safra['risco_detectado'] == True)
+                    ]['data'].min()
+                    
+                    if pd.notnull(futuro):
+                        dias = (futuro - data_atual).days
+                        l_prev.append(futuro)
+                        l_dias.append(dias)
+                        l_status.append(f"Risco em {dias} dias")
+                    else:
+                        l_prev.append(None)
+                        l_dias.append(None)
+                        l_status.append("Monitorando")
+                    l_erro.append(None)
 
-                # ============================================================
-                #  CÁLCULO ROBUSTO (Matriz de Confusão Explícita)
-                # ============================================================
-                # 1. Garante binário INTEIRO (0 ou 1) para ambos
-                y_true = df_dia['target'].astype(int)
-                y_pred_bin = (df_dia['predito'] >= 0.77).astype(int)
+            df_dia['data_prevista_exibicao'] = l_prev
+            df_dia['dias_ate_chegada'] = l_dias
+            df_dia['erro_final'] = l_erro
+            df_dia['status_exibicao'] = l_status
+            df_dia['data_simulacao_str'] = data_atual.strftime('%Y-%m-%d')
 
-                # 2. Calcula os 4 quadrantes matematicamente
-                # VP (Verdadeiro Positivo): Era 1 e previu 1
-                VP = ((y_true == 1) & (y_pred_bin == 1)).sum()
-                
-                # VN (Verdadeiro Negativo): Era 0 e previu 0
-                VN = ((y_true == 0) & (y_pred_bin == 0)).sum()
-                
-                # FP (Falso Positivo): Era 0 e previu 1 (Alarme Falso)
-                FP = ((y_true == 0) & (y_pred_bin == 1)).sum()
-                
-                # FN (Falso Negativo): Era 1 e previu 0 (Perdeu a doença)
-                FN = ((y_true == 1) & (y_pred_bin == 0)).sum()
+            # ============================================================
+            # 📊 MÉTRICAS CORRIGIDAS (Aqui está a correção do Print)
+            # ============================================================
+            y_true = df_dia['target'].astype(int)
+            y_pred_bin = (df_dia['predito'] >= LIMIAR).astype(int)
 
-                # 3. Métricas Derivadas
-                total = len(df_dia)
-                total_acertos = VP + VN
-                acuracia = (total_acertos / total * 100) if total > 0 else 0
-                acuracia_media.append(acuracia)
-                
-                # Recall (Sensibilidade): Capacidade de detectar a doença
-                total_doenca = VP + FN
-                recall = (VP / total_doenca * 100) if total_doenca > 0 else 0
-                
-                # Especificidade: Capacidade de acerta o "saudável"
-                total_saudavel = VN + FP
-                especificidade = (VN / total_saudavel * 100) if total_saudavel > 0 else 0
-                # ============================================================
+            VP = ((y_true == 1) & (y_pred_bin == 1)).sum()
+            VN = ((y_true == 0) & (y_pred_bin == 0)).sum()
+            FP = ((y_true == 0) & (y_pred_bin == 1)).sum()
+            FN = ((y_true == 1) & (y_pred_bin == 0)).sum()
+            
+            # Totais Matemáticos
+            total_pontos = len(df_dia)
+            total_reais_doentes = VP + FN  # A verdade absoluta do snapshot
+            
+            acuracia = (VP + VN) / total_pontos * 100 if total_pontos > 0 else 0
+            
+            # Erro Médio (apenas dos que já têm erro fechado)
+            erros_validos = [e for e in l_erro if e is not None]
+            erro_medio = np.mean(erros_validos) if erros_validos else 0
 
-                # Gera GeoJSON (Código igual ao anterior)
-                features = df_dia.apply(gerar_feature_geojson, axis=1).tolist()
+            # Salva
+            features = df_dia.apply(gerar_feature_geojson, axis=1).tolist()
+            
+            geojson_data = {
+                "type": "FeatureCollection",
+                "metadata": {
+                    "data_referencia": data_atual.strftime('%Y-%m-%d'),
+                    "safra": str(safra_alvo),
+                    "total_pontos": total_pontos,
+                    "infectados_snapshot": int(total_reais_doentes),
+                    "acuracia": round(acuracia, 1),
+                    "erro_medio_final": round(erro_medio, 1)
+                },
+                "features": features
+            }
 
-                # ... (Montagem do geojson_data igual ao anterior) ...
-                # ... (Salvamento do arquivo igual ao anterior) ...
-                
-                #  PRINT "RAIO-X" CORRIGIDO
-                print(f"    Raio-X do dia {data_atual.strftime('%d/%m')}:")
-                print(f"      - Total Pontos: {total}")
-                print(f"      - Acurácia:     {total_acertos} ({acuracia:.1f}%)")
-                print(f"      - Cenário Real: {total_doenca} Doentes | {total_saudavel} Saudáveis")
-                print(f"      - Matriz Conf.: VP={VP} | FP={FP} | VN={VN} | FN={FN}")
-                print(f"      - O Modelo viu: {VP} doentes (Recall: {recall:.1f}%)")
-                if total_saudavel > 0:
-                    print(f"      - Acerto Saud.: {VN} saudáveis (Especif.: {especificidade:.1f}%)")
-                print("-" * 40)
-                acertos = total_acertos
-                
-                # Gera Lista de Features GeoJSON
-                features = df_dia.apply(gerar_feature_geojson, axis=1).tolist()
+            filename = f"mapa_{safra_alvo}_{data_atual.strftime('%Y-%m-%d')}.geojson"
+            with open(os.path.join(OUTPUT_FOLDER, filename), 'w', encoding='utf-8') as f:
+                json.dump(geojson_data, f, ensure_ascii=False, indent=2)
+            
+            # ============================================================
+            # 🖨️ PRINT COM MATEMÁTICA CORRETA
+            # ============================================================
+            # Agora "Infectados (Target=1)" é a soma explicita de VP + FN. Não tem como dar errado.
+            print(f"   📅 {data_atual.strftime('%d/%m')} | Acc: {acuracia:.1f}% | Erro: {erro_medio:.1f}d")
+            print(f"      VP: {VP} (Pegou) | FN: {FN} (Perdeu) | Infectados (Target=1): {total_reais_doentes}")
+            print("-" * 40)
 
-                # Monta Objeto Final
-                geojson_data = {
-                    "type": "FeatureCollection",
-                    "metadata": {
-                        "data_referencia": data_atual.strftime('%Y-%m-%d'),
-                        "safra_referencia": str(safra_alvo),
-                        "modelo_usado": f"{NOME_BASE_MODELO}_{ano_modelo}.pkl",
-                        "total_pontos": len(features)
-                    },
-                    "features": features
-                }
-
-                # Salva
-                filename = f"mapa_{safra_alvo}_{data_atual.strftime('%Y-%m-%d')}.geojson"
-                caminho_salvar = os.path.join(OUTPUT_FOLDER, filename)
-                
-                with open(caminho_salvar, 'w', encoding='utf-8') as f:
-                    json.dump(geojson_data, f, ensure_ascii=False)
-                
-                
-                print(f"    Gerado: {filename} ({len(features)} pts) acertos: {acertos}")
-
-            except Exception as e:
-                print(f"    Erro em {data_atual.date()}: {e}")
-
-            # Avança o tempo
             data_atual += timedelta(days=STEP_DAYS)
 
-    print("\n Processamento de todas as safras finalizado.")
-    acuracia_media_final = np.mean(acuracia_media) if acuracia_media else 0
-    print(f"acuracia_media_final: {acuracia_media_final:.2f}%")
+    print("\n🏁 Finalizado!")
