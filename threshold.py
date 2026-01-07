@@ -1,151 +1,81 @@
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 import numpy as np
-import joblib
+import glob
 import os
-from sklearn.metrics import confusion_matrix
-from config import Config
-from helpers.input_output import get_latest_file
+from datetime import datetime
 
-def encontrar_melhor_threshold_safra(y_true, y_proba, beta=1.5):
-    """
-    Testa thresholds e retorna o melhor baseado no F-Beta Score.
-    :param beta: 1.0 = F1 (Equilíbrio total)
-                 1.5 = Prioriza um pouco mais o Recall (Sua escolha)
-                 2.0 = Prioriza muito o Recall (Critério agrícola pesado)
-    """
-    thresholds = np.arange(0.01, 0.95, 0.01)
-    melhor_score = -1
-    dados_vencedor = {}
-
-    for t in thresholds:
-        y_pred = (y_proba >= t).astype(int)
-        tn, fp, fn, vp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
-        
-        total_doenca = vp + fn
-        
-        # Evita divisão por zero
-        if total_doenca == 0: continue 
-
-        # 1. Calcula Métricas Básicas
-        recall = vp / total_doenca
-        precision = vp / (vp + fp) if (vp + fp) > 0 else 0
-        
-        # 2. Calcula F-Beta (A Mágica acontece aqui)
-        # Fórmula: (1 + beta²) * (P * R) / ((beta² * P) + R)
-        if (precision + recall) == 0:
-            f_beta = 0
-        else:
-            numerador = (1 + beta**2) * (precision * recall)
-            denominador = ((beta**2 * precision) + recall)
-            f_beta = numerador / denominador
-            
-        # 3. Escolhe o maior F-Beta
-        if f_beta > melhor_score:
-            melhor_score = f_beta
-            dados_vencedor = {
-                'threshold': t,
-                'score_fbeta': f_beta,
-                'recall': recall,
-                'precision': precision,
-                'vp': vp, 'fn': fn, 'fp': fp
-            }
-            
-    return dados_vencedor
-
-def run_analise_global():
-    # --- CONFIG ---
-    DATASET_PATH = get_latest_file("features", "features_SI.csv")
-    PASTA_MODELOS = "modelos_por_safra"
-    NOME_BASE_MODELO = "XGB_classificador_temp"
+def analisar_e_salvar_graficos(caminho_csv):
+    df = pd.read_csv(caminho_csv)
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    output_dir = f"analise_resultados_{timestamp}"
+    os.makedirs(output_dir, exist_ok=True)
     
-    print(" Carregando dataset completo...")
-    df = pd.read_csv(DATASET_PATH)
+    # Tratamento do valor 999
+    limiares_reais = sorted([x for x in df['Limiar_Reg_Dias'].unique() if x != 999])
+    valor_visual_999 = max(limiares_reais) + 10 if limiares_reais else 999
+    df['Limiar_Plot'] = df['Limiar_Reg_Dias'].replace(999, valor_visual_999)
+    df['Rotulo_Trava'] = df['Limiar_Reg_Dias'].replace(999, 'Sem Trava').astype(str)
     
-    df['data_ocorrencia'] = pd.to_datetime(df['data_ocorrencia'])
+    sns.set_theme(style="whitegrid", context="talk")
 
-    # CRIAR COLUNA SAFRA
-    df['safra'] = np.where(
-        df['data_ocorrencia'].dt.month >= 9,
-        df['data_ocorrencia'].dt.year,
-        df['data_ocorrencia'].dt.year - 1
-    )
+    # --- GRAFICO 1: HEATMAPS (RECALL E ERRO) ---
+    fig1, axes1 = plt.subplots(1, 2, figsize=(20, 8))
+    for i, metrica in enumerate(['Recall', 'Erro_Medio']):
+        pivot = df.pivot_table(index='Limiar_Class', columns='Limiar_Reg_Dias', values=metrica)
+        cmap = "YlGnBu" if metrica == 'Recall' else "RdYlGn_r"
+        sns.heatmap(pivot, annot=True, fmt=".1f", cmap=cmap, ax=axes1[i], center=0 if i==1 else None)
+        axes1[i].set_title(f'Média Global: {metrica}')
     
-    safras = sorted(df['safra'].unique())
-    resultados_gerais = []
+    plt.tight_layout()
+    fig1.savefig(f"{output_dir}/1_heatmaps_globais.png")
+    plt.close()
 
-    print(f"\n Iniciando Análise (Critério: F1.5 - Leve prioridade ao Recall)...")
+    # --- GRAFICO 2: PARETO POR SAFRA ---
+    # Este gráfico mostra se o comportamento é consistente entre diferentes anos
+    plt.figure(figsize=(12, 8))
+    sns.scatterplot(data=df, x='Erro_Medio', y='Recall', hue='Safra', style='Safra', 
+                    size='Limiar_Class', palette='viridis', alpha=0.7)
+    plt.axvline(0, color='red', linestyle='--')
+    plt.title('Dispersão Recall vs Erro por Safra')
+    plt.savefig(f"{output_dir}/2_pareto_por_safra.png")
+    plt.close()
 
-    for safra in safras:
-        path_modelo = os.path.join(PASTA_MODELOS, f"{NOME_BASE_MODELO}_{safra}.pkl")
-        
-        if not os.path.exists(path_modelo):
-            print(f" Pulei Safra {safra}: Modelo não encontrado.")
-            continue
-
-        df_safra = df[df['safra'] == safra].copy()
-        if df_safra.empty: continue
-
-        # Prepara X (Sem remover lat/long)
-        cols_ignore = ['ocorrencia_id', 'data', 'data_ocorrencia', 'target', 'safra']
-        cols_existentes = [c for c in cols_ignore if c in df_safra.columns]
-        X = df_safra.drop(columns=cols_existentes)
-        y = df_safra['target']
-
-        try:
-            model = joblib.load(path_modelo)
-            
-            if hasattr(model, "feature_names_in_"):
-                X = X[model.feature_names_in_]
-            
-            raw_pred = model.predict(X)
-            y_proba = np.clip(raw_pred, 0, 1) 
-            
-        except Exception as e:
-            print(f" Erro na safra {safra}: {e}")
-            continue
-
-        # BUSCA O MELHOR THRESHOLD COM BETA 1.5
-        res = encontrar_melhor_threshold_safra(y, y_proba, beta=1.5)
-        
-        if not res:
-            print(f" Safra {safra}: Dados insuficientes.")
-            continue
-
-        print(f" Safra {safra}: Threshold Ideal = {res['threshold']:.2f} "
-              f"(F1.5: {res['score_fbeta']:.2f} | Recall: {res['recall']:.1%} | Precision: {res['precision']:.1%})")
-
-        resultados_gerais.append({
-            'Safra': safra,
-            'Ideal_Threshold': res['threshold'],
-            'F1.5_Score': res['score_fbeta'],
-            'Recall': res['recall'],
-            'Precision': res['precision']
-        })
-
-    # --- RELATÓRIO FINAL ---
-    df_res = pd.DataFrame(resultados_gerais)
+    # --- GRAFICO 3: EVOLUÇÃO TEMPORAL POR SAFRA (FACET GRID) ---
+    # Mostra o Recall conforme relaxamos a trava, separado por Safra
+    g = sns.FacetGrid(df, col="Safra", hue="Limiar_Class", height=5, aspect=1.2, col_wrap=2)
+    g.map(sns.lineplot, "Limiar_Plot", "Recall", marker="o")
     
-    print("\n" + "="*50)
-    print(" RESULTADO CONSOLIDADO (Critério F1.5)")
-    print("="*50)
+    # Ajustar labels do eixo X para cada faceta
+    for ax in g.axes.flat:
+        ax.set_xticks(df['Limiar_Plot'].unique())
+        ax.set_xticklabels(df['Rotulo_Trava'].unique(), rotation=45)
     
-    if not df_res.empty:
-        media_t = df_res['Ideal_Threshold'].mean()
-        mediana_t = df_res['Ideal_Threshold'].median()
-        min_t = df_res['Ideal_Threshold'].min()
-        std_t = df_res['Ideal_Threshold'].std()
+    g.add_legend(title="Limiar Classificador")
+    g.fig.subplots_adjust(top=0.9)
+    g.fig.suptitle('Evolução do Recall por Safra conforme Limiar de Regressão')
+    g.savefig(f"{output_dir}/3_evolucao_por_safra.png")
+    plt.close()
 
-        print(df_res[['Safra', 'Ideal_Threshold', 'Recall', 'Precision', 'F1.5_Score']].to_string(index=False))
-        print("-" * 50)
-        print(f" MÉDIA DO THRESHOLD:   {media_t:.4f}")
-        print(f" MEDIANA:              {mediana_t:.4f}")
-        print(f" Desvio Padrão:        {std_t:.4f}")
-        
-        print("\n DICA:")
-        print("Use a MÉDIA se o desvio for baixo (< 0.1).")
-        print("Use a MEDIANA se houver outliers (um ano muito diferente dos outros).")
-    else:
-        print("Nenhum resultado gerado.")
+    # --- GRAFICO 4: BOXPLOT DE ESTABILIDADE DO ERRO ---
+    plt.figure(figsize=(12, 6))
+    sns.boxplot(data=df, x='Limiar_Reg_Dias', y='Erro_Medio', palette='coolwarm')
+    plt.title('Variabilidade do Erro Médio conforme Limiar de Trava')
+    plt.savefig(f"{output_dir}/4_estabilidade_erro.png")
+    plt.close()
+
+    print(f"\n✅ Análise concluída! 4 gráficos salvos na pasta: {output_dir}")
+    
+    # Recomendação simplificada por Safra
+    print("\n💡 RESUMO POR SAFRA (Melhores Recalls):")
+    resumo = df.sort_values(['Safra', 'Recall'], ascending=[True, False]).groupby('Safra').head(1)
+    print(resumo[['Safra', 'Limiar_Class', 'Limiar_Reg_Dias', 'Recall', 'Erro_Medio']].to_string(index=False))
 
 if __name__ == "__main__":
-    run_analise_global()
+    lista_arquivos = glob.glob('grid_search_results_*.csv')
+    if not lista_arquivos:
+        print("❌ Nenhum CSV encontrado.")
+    else:
+        recente = max(lista_arquivos, key=os.path.getctime)
+        analisar_e_salvar_graficos(recente)

@@ -17,6 +17,25 @@ from sklearn.metrics import (
 )
 from xgboost import XGBRegressor
 
+import os,joblib
+
+# ==========================================
+# ------------------- FUNÇAO EXTRA ----------------------
+# ==========================================
+def salvar_modelo(model, nome_modelo, safra, pasta_saida="modelos_regressao"):
+    """
+    Salva o modelo treinado em formato .pkl
+    Ex: modelos_regressao/RF_regressor_safra_2017.pkl
+    """
+    if not os.path.exists(pasta_saida):
+        os.makedirs(pasta_saida)
+    
+    # Cria o nome do arquivo: NomeModelo_AnoSafra.pkl
+    filename = f"{nome_modelo}_{(safra - 1)}.pkl"
+    caminho_completo = os.path.join(pasta_saida, filename)
+    
+    joblib.dump(model, caminho_completo)
+    print(f"   💾 Modelo salvo: {caminho_completo}")
 
 # ==========================================================
 # ------------------- 1. PREPARAÇÃO DE DADOS ----------------
@@ -96,6 +115,8 @@ def train_and_evaluate(df: pd.DataFrame, safra_teste: int,
 
     print(f"\n🌾 Treinando modelo {nome_modelo} para safra {safra_teste}...")
     model.fit(X_train, y_train)
+    
+    salvar_modelo(model, nome_modelo, safra_teste)
     y_pred = model.predict(X_test)
 
     return compute_metrics(y_test, y_pred, safra_teste, nome_modelo)
@@ -147,8 +168,8 @@ def compute_metrics(y_true, y_pred, safra_teste: int, nome_modelo: str) -> dict:
 def run(execution_started_at: datetime,
         cfg: Config,
         safras: list = None,
-        model_type: str = "rf",
-        include_temporais: bool = False,
+        model_type: str = "xgb",
+        include_temporais: bool = True,
         nome_do_modelo: str = None,
         output_path: str = "resultados.csv"):
     """Executa o pipeline completo de treino, teste e avaliação por safra."""
