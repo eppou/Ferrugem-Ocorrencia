@@ -297,7 +297,7 @@ def run(execution_started_at: datetime, cfg: Config, target_safras: list = [2007
                 json.dump(geojson_data, f, ensure_ascii=False, indent=2)
             
             # >>> PRINT MAIS COMPLETO <<<
-            print(f"   📅 {data_atual.strftime('%d/%m')} | "
+            print(f" {data_atual.strftime('%d/%m')} | "
                   f"Infecções Reais: {total_inf} | "
                   f"VP: {metricas_dia['VP']} | FN: {metricas_dia['FN']} | "
                   f"Recall: {recall:.1f}% | "

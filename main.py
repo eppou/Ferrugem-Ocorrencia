@@ -40,7 +40,7 @@ def match_and_run(cfg: Config):
                 (proposta_classifica.run, [cfg]),
             ])
             
-        case "proposta_classificacao_hibrida":
+        case "proposta_hibrida":
             run([
                 (proposta_classificacao_hibrida.run, [cfg]),
             ])
@@ -106,14 +106,15 @@ def match_and_run(cfg: Config):
             ])   
             
         case "pipeline":
-            run([
-                (instances.run, [cfg]),
-                # (severity.run, [cfg, False]),
-                (features.run, [cfg]),
-                features_with_zero.run,
-                (concorrente.run, [cfg]),
-                (proposta_kemmer.run, [cfg]),
-            ])
+            run(
+                [
+                    features_with_augmentation.run,
+                    (proposta_classifica.run, [cfg]),
+                    (proposta_talhao.run, [cfg]),
+                    (proposta_safra.run, [cfg]),
+                    (proposta_kemmer.run, [cfg]),
+                ]
+            )
 
         case "pipeline_results":
             run([
