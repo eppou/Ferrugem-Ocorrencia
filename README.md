@@ -3,8 +3,9 @@
 ## Executar o projeto
 1. Instalar o [Poetry](https://python-poetry.org)
 2. Executar `poetry install` na raiz do projeto
-3. Executar `poetry shell` para entrar no ambiente virtual configurado no Poetry 
-4. Rodar o projeto com `python main.py <parametro>`, onde `<parametro>` é alguma das opções no método `match_and_run()` em `main.py`.
+3. Executar `poetry shell` para entrar no ambiente virtual configurado no Poetry
+4. Criar arquivo config.cfg, caso for usar o banco de ocorrencias colocar endereço e porta seguindo o exemplo.
+5. Rodar o projeto com `python main.py <parametro>`, onde `<parametro>` é alguma das opções no método `match_and_run()` em `main.py`.
 
 Para rodar a pipeline padrão do projeto: `python main.py pipeline`.
 
